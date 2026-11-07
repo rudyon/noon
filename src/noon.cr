@@ -3,7 +3,7 @@ require "./lexer"
 require "./ast"
 require "./parser"
 
-module NoonC
+module Noon
   def self.main
     source = File.read(ARGV[0])
     tokens = Lexer.tokenize(source)
@@ -17,4 +17,4 @@ module NoonC
   end
 end
 
-NoonC.main
+Noon.main

@@ -1,6 +1,7 @@
-module NoonC
+module Noon
   module Token
     enum Kind : UInt8
+      EOF
       Function
       CurlyOpen
       CurlyClose

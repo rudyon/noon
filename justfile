@@ -1,6 +1,6 @@
 build:
     @mkdir -p bin
-    @crystal build src/noonc.cr -o bin/noonc --progress
+    @crystal build src/noon.cr -o bin/noon --progress
 
 clean:
     @rm -f bin/*

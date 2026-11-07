@@ -1,4 +1,4 @@
-module NoonC
+module Noon
   module AST
     alias Node = Function | NoonInt
 

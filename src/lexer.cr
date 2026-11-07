@@ -1,4 +1,4 @@
-module NoonC
+module Noon
   module Lexer
     struct Scanner
       property source, pos
@@ -63,6 +63,7 @@ module NoonC
           tokens.push(Token::Token.new(Token::Kind::Symbol, consumed + matched))
         end
       end
+      tokens.push(Token::Token.new(Token::Kind::EOF, ""))
 
       tokens
     end
