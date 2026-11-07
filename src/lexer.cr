@@ -48,7 +48,9 @@ module NoonC
         consumed = scanner.consume
         case consumed
         when 'f'
-          tokens.push(Token::Token.new(Token::Kind::Function, "f"))
+          if scanner.peek.whitespace? || scanner.eof?
+            tokens.push(Token::Token.new(Token::Kind::Function, "f"))
+          end
         when '{'
           tokens.push(Token::Token.new(Token::Kind::CurlyOpen, "{"))
         when '}'
