@@ -34,12 +34,12 @@ module Noon
     end
 
     def self.parse_number(token : Token::Token)
-      AST::NoonInt
-      AST::NoonInt.new(token.lexeme.to_i)
+      AST::Integer
+      AST::Integer.new(token.lexeme.to_i)
     end
 
     def self.parse_function_body(reader : Reader)
-      Array(AST::Node)
+      {Array(AST::Node), Reader}
       body = [] of AST::Node
 
       while reader.peek.kind != Token::Kind::CurlyClose
@@ -53,11 +53,11 @@ module Noon
       end
       reader.consume
 
-      body
+      {body, reader}
     end
 
     def self.parse_function(reader : Reader)
-      AST::Function
+      {AST::Function, Reader}
       if reader.peek.kind == Token::Kind::Symbol
         name = parse_symbol(reader.consume)
       else
@@ -66,12 +66,12 @@ module Noon
 
       if reader.peek.kind == Token::Kind::CurlyOpen
         reader.consume
-        body = parse_function_body(reader)
+        body, reader = parse_function_body(reader)
       else
         abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek.kind}")
       end
 
-      AST::Function.new(name, body)
+      {AST::Function.new(name, body), reader}
     end
 
     def self.parse(tokens : Array(Token::Token))
@@ -83,7 +83,10 @@ module Noon
         consumed = reader.consume
         case consumed.kind
         when Token::Kind::Function
-          ast.push(parse_function(reader))
+          f, reader = parse_function(reader)
+          ast.push(f)
+        when Token::Kind::Number
+          ast.push(parse_number(consumed))
         end
       end
 
