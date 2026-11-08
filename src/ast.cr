@@ -1,6 +1,6 @@
 module Noon
   module AST
-    alias Node = Function | Integer
+    alias Node = Function | UInteger8
 
     struct Function
       property name, body
@@ -9,10 +9,10 @@ module Noon
       end
     end
 
-    struct Integer
+    struct UInteger8
       property value
 
-      def initialize(@value : Int32)
+      def initialize(@value : UInt8)
       end
     end
   end

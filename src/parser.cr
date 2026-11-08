@@ -34,8 +34,12 @@ module Noon
     end
 
     def self.parse_number(token : Token::Token)
-      AST::Integer
-      AST::Integer.new(token.lexeme.to_i)
+      AST::UInteger8
+      if !token.lexeme.to_u8?
+        abort("error: only 8-bit unsigned integers supported for now")
+      end
+
+      AST::UInteger8.new(token.lexeme.to_u8)
     end
 
     def self.parse_function_body(reader : Reader)

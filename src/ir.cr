@@ -35,7 +35,7 @@ module Noon
         case node
         when .is_a?(AST::Function)
           nodes.concat(lower_function(node))
-        when .is_a?(AST::Integer)
+        when .is_a?(AST::UInteger8)
           nodes.push(Push.new(node.value))
         end
       end
@@ -43,9 +43,9 @@ module Noon
       nodes.push(FunctionEnd.new)
     end
 
-    def self.lower_integer(integer : AST::Integer)
+    def self.lower_uint8(uint8 : AST::UInteger8)
       Operation
-      Push.new(integer.value)
+      Push.new(uint8.value)
     end
 
     def self.lower(ast : Array(AST::Node))
@@ -56,8 +56,8 @@ module Noon
         case node
         when .is_a?(AST::Function)
           ir.concat(lower_function(node))
-        when .is_a?(AST::Integer)
-          ir.push(lower_integer(node))
+        when .is_a?(AST::UInteger8)
+          ir.push(lower_uint8(node))
         end
       end
       ir.push(Return.new)

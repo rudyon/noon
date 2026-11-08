@@ -14,7 +14,7 @@ module Noon
           # do nothing for now, since you can't call functions yet anyway
         when .is_a?(IR::Push)
           buffer.write_byte(0xb8.to_u8)
-          buffer.write_byte(0x2a.to_u8)
+          buffer.write_byte(op.value.to_u8)
           buffer.write_byte(0x00.to_u8)
           buffer.write_byte(0x00.to_u8)
           buffer.write_byte(0x00.to_u8)
