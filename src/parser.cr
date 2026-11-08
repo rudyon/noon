@@ -51,6 +51,7 @@ module Noon
           body.push(parse_number(consumed))
         end
       end
+      reader.consume
 
       body
     end
