@@ -3,6 +3,7 @@ require "./lexer"
 require "./ast"
 require "./parser"
 require "./ir"
+require "./backend"
 
 module Noon
   def self.main
@@ -10,7 +11,7 @@ module Noon
     tokens = Lexer.tokenize(source)
     ast = Parser.parse(tokens)
     ir = IR.lower(ast)
-    puts IR.to_s(ir)
+    puts Backend.to_asm(ir)
   end
 end
 
