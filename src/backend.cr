@@ -1,8 +1,10 @@
+require "file_utils"
+
 module Noon
   module Backend
-    def self.to_asm(ir : Array(IR::Operation)) # this entire function is temporary
-      String
-      s = "BITS 64\nORG 0x7c00\n\nstart:\n"
+    def self.to_x86_64_unknown_uefi(ir : Array(IR::Operation))
+      Bytes
+      buffer = IO::Memory.new
 
       ir.each do |op|
         case op
@@ -11,14 +13,17 @@ module Noon
         when .is_a?(IR::FunctionEnd)
           # do nothing for now, since you can't call functions yet anyway
         when .is_a?(IR::Push)
-          s += "\tmov rdi, #{op.value}\n"
+          buffer.write_byte(0xb8.to_u8)
+          buffer.write_byte(0x2a.to_u8)
+          buffer.write_byte(0x00.to_u8)
+          buffer.write_byte(0x00.to_u8)
+          buffer.write_byte(0x00.to_u8)
         when .is_a?(IR::Return)
-          s += "\tmov rax, 60\n"
+          buffer.write_byte(0xc3.to_u8)
         end
       end
-      s += "\tjmp $\n" # so we now it's working
 
-      s
+      buffer.to_slice
     end
   end
 end

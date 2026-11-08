@@ -11,7 +11,8 @@ module Noon
     tokens = Lexer.tokenize(source)
     ast = Parser.parse(tokens)
     ir = IR.lower(ast)
-    puts Backend.to_asm(ir)
+    binary = Backend.to_x86_64_unknown_uefi(ir)
+    File.write("out.o", binary)
   end
 end
 
