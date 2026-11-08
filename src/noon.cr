@@ -12,7 +12,7 @@ module Noon
     ast = Parser.parse(tokens)
     ir = IR.lower(ast)
     binary = Backend.to_x86_64_unknown_uefi(ir)
-    File.write("out.bin", binary)
+    File.write("out.o", binary)
   end
 end
 
