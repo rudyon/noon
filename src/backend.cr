@@ -35,9 +35,10 @@ module Noon
 
       # PE32+ optional header
 
-      buffer.write_bytes(0x020b.to_u16)      # magic
-      buffer.write_bytes(0x0000.to_u16)      # linker version
-      buffer.write_bytes(binary.size.to_u32) # code size
+      buffer.write_bytes(0x020b.to_u16) # magic
+      buffer.write_bytes(0x0000.to_u16) # linker version
+      code_size = (binary.size + 511) & ~511
+      buffer.write_bytes(code_size.to_u32) # code size
 
       spacing_bytes = 8
       while spacing_bytes > 0
@@ -70,7 +71,7 @@ module Noon
 
       buffer.write_bytes(16.to_u32) # number of data directories
 
-      spacing_bytes = 130
+      spacing_bytes = 128
       while spacing_bytes > 0
         buffer.write_byte(0x00.to_u8)
         spacing_bytes -= 1
@@ -80,7 +81,7 @@ module Noon
 
       buffer.write(".text\0\0\0".to_slice)   # section name
       buffer.write_bytes(binary.size.to_u32) # virtual size
-      buffer.write_bytes(0x1000.to_u16)      # virtual address
+      buffer.write_bytes(0x1000.to_u32)      # virtual address
       buffer.write_bytes(512.to_u32)         # size of raw data
       buffer.write_bytes(512.to_u32)         # pointer to raw data
 
@@ -100,7 +101,7 @@ module Noon
 
       buffer.write(binary)
 
-      spacing_bytes = 506
+      spacing_bytes = code_size - binary.size
       while spacing_bytes > 0
         buffer.write_byte(0x00.to_u8)
         spacing_bytes -= 1
