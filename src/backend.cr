@@ -1,49 +1,117 @@
-require "file_utils"
-
 module Noon
   module Backend
-    def self.to_x86_64_unknown_uefi(ir : Array(IR::Operation))
+    def self.to_pe(binary : Bytes)
       Bytes
       buffer = IO::Memory.new
 
-      # COFF file header
+      # MS-DOS stub
 
-      # magic number for x86_64
-      buffer.write_bytes(0x8664.to_u16)
+      buffer.write_bytes(0x5a4d.to_u16) # magic
 
-      # number of sections
-      buffer.write_bytes(0x0001.to_u16)
+      spacing_bytes = 58
+      while spacing_bytes > 0
+        buffer.write_byte(0x00.to_u8)
+        spacing_bytes -= 1
+      end
 
-      # file creation timestamp
+      buffer.write_bytes(64.to_u32) # e_lfanew
+
+      # PE header
+
+      buffer.write("PE\0\0".to_slice)   # magic
+      buffer.write_bytes(0x8664.to_u16) # machine architecture
+      buffer.write_bytes(1.to_u16)      # number of sections
       ctime = (Time.utc - Time::UNIX_EPOCH).to_seconds
-      buffer.write_bytes(ctime)
+      buffer.write_bytes(ctime.to_u32) # file creation timestamp
 
-      # pointer to symbol table
-      buffer.write_bytes(0x00000000)
+      spacing_bytes = 8
+      while spacing_bytes > 0
+        buffer.write_byte(0x00.to_u8)
+        spacing_bytes -= 1
+      end
 
-      # number of symbols
-      buffer.write_bytes(0x00000000)
+      buffer.write_bytes(0x00f0.to_u16) # size of optional header
+      buffer.write_bytes(0x0002.to_u16) # characteristics
 
-      # size of the optional header
-      buffer.write_bytes(0x0000.to_u16)
+      # PE32+ optional header
 
-      # characteristics
-      buffer.write_bytes(0x0000.to_u16)
+      buffer.write_bytes(0x020b.to_u16)      # magic
+      buffer.write_bytes(0x0000.to_u16)      # linker version
+      buffer.write_bytes(binary.size.to_u32) # code size
 
-      # COFF section header
+      spacing_bytes = 8
+      while spacing_bytes > 0
+        buffer.write_byte(0x00.to_u8)
+        spacing_bytes -= 1
+      end
 
-      # section name
-      buffer.write_string("efi_main".to_slice)
+      buffer.write_bytes(0x00001000.to_u32) # entry point RVA
+      buffer.write_bytes(0x00001000.to_u32) # base of code
+      buffer.write_bytes(0x00100000.to_u64) # image base
+      buffer.write_bytes(4096.to_u32)       # section alignment
+      buffer.write_bytes(512.to_u32)        # file alignment
 
-      # idg the rest so let's just try setting them all to zero for now
-      buffer.write_bytes(0x00000000) # virtual size
-      buffer.write_bytes(0x00000000) # virtual address
-      buffer.write_bytes(0x00000000) # size of raw data
-      buffer.write_bytes(0x00000000) # pointer to raw data
-      buffer.write_bytes(0x00000000) # pointer to relocations
-      buffer.write_bytes(0x00000000) # pointer to line numbers
-      buffer.write_bytes(0x00000000) # number of relocations & number of line numbers
-      buffer.write_bytes(0x00000000) # characteristics
+      spacing_bytes = 16
+      while spacing_bytes > 0
+        buffer.write_byte(0x00.to_u8)
+        spacing_bytes -= 1
+      end
+
+      buffer.write_bytes(8192.to_u32)       # size of image
+      buffer.write_bytes(512.to_u32)        # size of headers
+      buffer.write_bytes(0x00000000.to_u32) # checksum
+      buffer.write_bytes(10.to_u16)         # subsystem
+
+      spacing_bytes = 38
+      while spacing_bytes > 0
+        buffer.write_byte(0x00.to_u8)
+        spacing_bytes -= 1
+      end
+
+      buffer.write_bytes(16.to_u32) # number of data directories
+
+      spacing_bytes = 130
+      while spacing_bytes > 0
+        buffer.write_byte(0x00.to_u8)
+        spacing_bytes -= 1
+      end
+
+      # section header
+
+      buffer.write(".text\0\0\0".to_slice)   # section name
+      buffer.write_bytes(binary.size.to_u32) # virtual size
+      buffer.write_bytes(0x1000.to_u16)      # virtual address
+      buffer.write_bytes(512.to_u32)         # size of raw data
+      buffer.write_bytes(512.to_u32)         # pointer to raw data
+
+      spacing_bytes = 12
+      while spacing_bytes > 0
+        buffer.write_byte(0x00.to_u8)
+        spacing_bytes -= 1
+      end
+
+      buffer.write_bytes(0x60000020.to_u32) # characteristics
+
+      spacing_bytes = 144
+      while spacing_bytes > 0
+        buffer.write_byte(0x00.to_u8)
+        spacing_bytes -= 1
+      end
+
+      buffer.write(binary)
+
+      spacing_bytes = 506
+      while spacing_bytes > 0
+        buffer.write_byte(0x00.to_u8)
+        spacing_bytes -= 1
+      end
+
+      buffer.to_slice
+    end
+
+    def self.to_x86_64(ir : Array(IR::Operation))
+      Bytes
+      buffer = IO::Memory.new
 
       ir.each do |op|
         case op

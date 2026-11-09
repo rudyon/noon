@@ -11,8 +11,10 @@ module Noon
     tokens = Lexer.tokenize(source)
     ast = Parser.parse(tokens)
     ir = IR.lower(ast)
-    binary = Backend.to_x86_64_unknown_uefi(ir)
-    File.write("out.o", binary)
+    binary = Backend.to_x86_64(ir)
+    pe = Backend.to_pe(binary)
+    File.write("BOOT_X64.EFI", pe)
+    File.chmod("BOOT_X64.EFI", 0o111)
   end
 end
 
