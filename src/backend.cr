@@ -217,7 +217,7 @@ module Noon
         buffer.write_bytes(function_hash[f_call_name])
         f_call_i += 1
       end
-      
+
       buffer.to_slice
     end
   end
