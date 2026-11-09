@@ -60,9 +60,9 @@ module Noon
     if emit_ir
       File.write(output_file, IR.to_s(ir))
     else
-      binary = Backend.to_x86_64(ir)
-      pe = Backend.to_pe(binary)
-      File.write(output_file, pe, perm: 0o755)
+      binary = Backend.compile(ir)
+      pe32x = Backend.format(binary)
+      File.write(output_file, pe32x, perm: 0o755)
     end
   end
 end

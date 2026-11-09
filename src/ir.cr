@@ -1,6 +1,6 @@
 module Noon
   module IR
-    alias Operation = Push | FunctionBegin | FunctionEnd | FFI | Return
+    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Push | Return
 
     struct FunctionBegin
       property name
@@ -11,6 +11,13 @@ module Noon
 
     struct FunctionEnd
       def initialize
+      end
+    end
+
+    struct Parameter
+      property index
+
+      def initialize(@index : Int32)
       end
     end
 
@@ -38,6 +45,12 @@ module Noon
       nodes = [] of Operation
       nodes.push(FunctionBegin.new(function.name))
 
+      i = 0
+      function.params.each do |param|
+        nodes.push(Parameter.new(i))
+        i += 1
+      end
+
       function.body.each do |node|
         case node
         when .is_a?(AST::Function)
@@ -46,8 +59,10 @@ module Noon
           nodes.push(Push.new(node.value))
         end
       end
-      nodes.push(Return.new)
       nodes.push(FunctionEnd.new)
+      nodes.push(Return.new)
+
+      nodes
     end
 
     def self.lower_ffi(ffi : AST::FFI)

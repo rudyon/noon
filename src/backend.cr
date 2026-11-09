@@ -1,6 +1,6 @@
 module Noon
   module Backend
-    def self.to_pe(binary : Bytes)
+    def self.format(binary : Bytes)
       Bytes
       buffer = IO::Memory.new
 
@@ -113,21 +113,46 @@ module Noon
       buffer.to_slice
     end
 
-    def self.to_x86_64(ir : Array(IR::Operation))
+    def self.compile(ir : Array(IR::Operation))
       Bytes
       buffer = IO::Memory.new
+
+      abi = "Noon"
 
       ir.each do |op|
         case op
         when .is_a?(IR::FunctionBegin)
-          # do nothing for now, since you can't call functions yet anyway
+          buffer.write_byte(0x55.to_u8) # push rbp
+
+          # mov rbp, rsp
+          buffer.write_byte(0x48.to_u8)
+          buffer.write_bytes(0xe589.to_u16)
         when .is_a?(IR::FunctionEnd)
-          # do nothing for now, since you can't call functions yet anyway
+          buffer.write_byte(0x58.to_u8) # pop rax
+
+          # mov rsp, rbp
+          buffer.write_byte(0x48.to_u8)
+          buffer.write_bytes(0xec89.to_u16)
+        when .is_a?(IR::Parameter)
+          if abi == "C"
+            case op.index
+            when 0
+              buffer.write_byte(0x51.to_u8) # push rcx
+            when 1
+              buffer.write_byte(0x52.to_u8) # push rdx
+            else
+              abort("error: compiler error")
+            end
+          end
+        when .is_a?(IR::FFI)
+          abi = op.string
         when .is_a?(IR::Push)
-          buffer.write_byte(0xb8.to_u8)
+          # push imm32
+          buffer.write_byte(0x68.to_u8)
           buffer.write_bytes(op.value)
         when .is_a?(IR::Return)
-          buffer.write_byte(0xc3.to_u8)
+          buffer.write_byte(0x5d.to_u8) # pop rbp
+          buffer.write_byte(0xc3.to_u8) # ret
         end
       end
 
