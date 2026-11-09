@@ -50,16 +50,34 @@ module Noon
         when 'f'
           if scanner.peek.whitespace? || scanner.eof?
             tokens.push(Token::Token.new(Token::Kind::Function, "f"))
+          elsif scanner.peek == 'f' # TODO: find a more elegant way to do this
+            scanner.consume
+            if scanner.peek == 'i'
+              scanner.consume
+              tokens.push(Token::Token.new(Token::Kind::FFI, "ffi"))
+            else
+              abort("error: no keyword named ff. did you mean ffi?")
+            end
           end
         when '{'
           tokens.push(Token::Token.new(Token::Kind::CurlyOpen, "{"))
         when '}'
           tokens.push(Token::Token.new(Token::Kind::CurlyClose, "}"))
+        when '('
+          tokens.push(Token::Token.new(Token::Kind::ParenOpen, "("))
+        when ')'
+          tokens.push(Token::Token.new(Token::Kind::ParenClose, ")"))
+        when ':'
+          tokens.push(Token::Token.new(Token::Kind::Colon, ":"))
+        when '*'
+          tokens.push(Token::Token.new(Token::Kind::Asterisk, "*"))
+        when '"'
+          tokens.push(Token::Token.new(Token::Kind::DoubleQuote, "\""))
         when .number?
           matched, scanner = Lexer.match(scanner, ->(c : Char) { c.number? })
           tokens.push(Token::Token.new(Token::Kind::Number, consumed + matched))
         when .letter?
-          matched, scanner = Lexer.match(scanner, ->(c : Char) { c.letter? })
+          matched, scanner = Lexer.match(scanner, ->(c : Char) { c.letter? || c == '_' })
           tokens.push(Token::Token.new(Token::Kind::Symbol, consumed + matched))
         end
       end

@@ -1,6 +1,6 @@
 module Noon
   module IR
-    alias Operation = Push | FunctionBegin | FunctionEnd | Return
+    alias Operation = Push | FunctionBegin | FunctionEnd | FFI | Return
 
     struct FunctionBegin
       property name
@@ -11,6 +11,13 @@ module Noon
 
     struct FunctionEnd
       def initialize
+      end
+    end
+
+    struct FFI
+      property string
+
+      def initialize(@string : String)
       end
     end
 
@@ -43,6 +50,15 @@ module Noon
       nodes.push(FunctionEnd.new)
     end
 
+    def self.lower_ffi(ffi : AST::FFI)
+      Array(Operation)
+      nodes = [] of Operation
+      nodes.push(FFI.new(ffi.string.string))
+      nodes.concat(lower_function(ffi.function))
+
+      nodes
+    end
+
     def self.lower_int32(int32 : AST::Integer32)
       Operation
       Push.new(int32.value)
@@ -56,6 +72,8 @@ module Noon
         case node
         when .is_a?(AST::Function)
           ir.concat(lower_function(node))
+        when .is_a?(AST::FFI)
+          ir.concat(lower_ffi(node))
         when .is_a?(AST::Integer32)
           ir.push(lower_int32(node))
         end
@@ -73,6 +91,8 @@ module Noon
           s += "FUNCTION_BEGIN #{op.name}\n"
         when .is_a?(FunctionEnd)
           s += "FUNCTION_END\n"
+        when .is_a?(FFI)
+          s += "FFI \"#{op.string}\"\n"
         when .is_a?(Push)
           s += "PUSH #{op.value}\n"
         when .is_a?(Return)

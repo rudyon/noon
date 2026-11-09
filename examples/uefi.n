@@ -1,0 +1,3 @@
+ffi "C" f efi_main(image_handler system_table) {
+	0
+}
