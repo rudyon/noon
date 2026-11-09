@@ -60,7 +60,6 @@ module Noon
         end
       end
       nodes.push(FunctionEnd.new)
-      nodes.push(Return.new)
 
       nodes
     end

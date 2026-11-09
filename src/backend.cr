@@ -116,45 +116,74 @@ module Noon
     def self.compile(ir : Array(IR::Operation))
       Bytes
       buffer = IO::Memory.new
+      function = IO::Memory.new
+      functions = [] of IO::Memory
 
       abi = "Noon"
+      in_function = false
 
       ir.each do |op|
         case op
         when .is_a?(IR::FunctionBegin)
-          buffer.write_byte(0x55.to_u8) # push rbp
+          function = IO::Memory.new
+          in_function = true
+
+          function.write_byte(0x55.to_u8) # push rbp
 
           # mov rbp, rsp
-          buffer.write_byte(0x48.to_u8)
-          buffer.write_bytes(0xe589.to_u16)
+          function.write_byte(0x48.to_u8)
+          function.write_bytes(0xe589.to_u16)
         when .is_a?(IR::FunctionEnd)
-          buffer.write_byte(0x58.to_u8) # pop rax
+          if in_function
+            function.write_byte(0x58.to_u8) # pop rax
 
-          # mov rsp, rbp
-          buffer.write_byte(0x48.to_u8)
-          buffer.write_bytes(0xec89.to_u16)
+            # mov rsp, rbp
+            function.write_byte(0x48.to_u8)
+            function.write_bytes(0xec89.to_u16)
+
+            # implicit return (this does not show up in IR)
+            function.write_byte(0x5d.to_u8) # pop rbp
+            function.write_byte(0xc3.to_u8) # ret
+
+            functions.push(function)
+            in_function = false
+          else
+            abort("error: compiler error")
+          end
         when .is_a?(IR::Parameter)
-          if abi == "C"
-            case op.index
-            when 0
-              buffer.write_byte(0x51.to_u8) # push rcx
-            when 1
-              buffer.write_byte(0x52.to_u8) # push rdx
-            else
-              abort("error: compiler error")
+          if in_function
+            if abi == "C"
+              case op.index
+              when 0
+                function.write_byte(0x51.to_u8) # push rcx
+              when 1
+                function.write_byte(0x52.to_u8) # push rdx
+              else
+                abort("error: compiler error")
+              end
             end
+          else
+            abort("error: compiler error")
           end
         when .is_a?(IR::FFI)
           abi = op.string
         when .is_a?(IR::Push)
-          # push imm32
-          buffer.write_byte(0x68.to_u8)
-          buffer.write_bytes(op.value)
+          if in_function
+            # push imm32
+            function.write_byte(0x68.to_u8)
+            function.write_bytes(op.value)
+          else
+            # push imm32
+            buffer.write_byte(0x68.to_u8)
+            buffer.write_bytes(op.value)
+          end
         when .is_a?(IR::Return)
           buffer.write_byte(0x5d.to_u8) # pop rbp
           buffer.write_byte(0xc3.to_u8) # ret
         end
       end
+
+      buffer.write(functions.join.to_slice)
 
       buffer.to_slice
     end

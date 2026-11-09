@@ -48,6 +48,8 @@ module Noon
     end
 
     input_file = Path[files[0]]
+    abort("error: no such file #{input_file}") unless File.exists?(input_file)
+
     if output_file == ""
       output_file = File.basename(input_file, input_file.extension)
     end
