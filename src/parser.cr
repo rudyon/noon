@@ -39,7 +39,7 @@ module Noon
           consumed = reader.consume
           case consumed.kind
           when Token::Kind::Number
-            args.push(parse_number(token))
+            args.push(parse_number(consumed))
           when Token::Kind::DoubleQuote
             s, reader = parse_string(reader)
             args.push(s)
