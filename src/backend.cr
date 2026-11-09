@@ -120,13 +120,15 @@ module Noon
       functions = [] of IO::Memory
       function_names = [] of String
       function_addresses = [] of Int32
+      function_call_names = [] of String
+      function_call_addresses = [] of Int32
 
       abi = "Noon"
       in_function = false
 
       ir.each do |op|
         case op
-        when .is_a?(IR::FunctionBegin)
+        when IR::FunctionBegin
           function = IO::Memory.new
           function_names.push(op.name)
           in_function = true
@@ -136,7 +138,7 @@ module Noon
           # mov rbp, rsp
           function.write_byte(0x48.to_u8)
           function.write_bytes(0xe589.to_u16)
-        when .is_a?(IR::FunctionEnd)
+        when IR::FunctionEnd
           if in_function
             function.write_byte(0x58.to_u8) # pop rax
 
@@ -153,7 +155,7 @@ module Noon
           else
             abort("error: compiler error")
           end
-        when .is_a?(IR::Parameter)
+        when IR::Parameter
           if in_function
             if abi == "C"
               case op.index
@@ -168,9 +170,23 @@ module Noon
           else
             abort("error: compiler error")
           end
-        when .is_a?(IR::FFI)
+        when IR::FFI
           abi = op.string
-        when .is_a?(IR::Push)
+        when IR::Call
+          function_call_names.push(op.name)
+
+          if in_function
+            # jmp rel32
+            function.write_byte(0xe9.to_u8)
+            function_call_addresses.push(function.pos)
+            function.write_bytes(0.to_u32)
+          else
+            # jmp rel32
+            buffer.write_byte(0xe9.to_u8)
+            function_call_addresses.push(buffer.pos)
+            buffer.write_bytes(0.to_u32)
+          end
+        when IR::Push
           if in_function
             # push imm32
             function.write_byte(0x68.to_u8)
@@ -180,7 +196,7 @@ module Noon
             buffer.write_byte(0x68.to_u8)
             buffer.write_bytes(op.value.to_u32)
           end
-        when .is_a?(IR::Return)
+        when IR::Return
           buffer.write_byte(0x5d.to_u8) # pop rbp
           buffer.write_byte(0xc3.to_u8) # ret
         end
@@ -191,6 +207,17 @@ module Noon
         buffer.write(f.to_slice)
       end
 
+      function_hash = Hash.zip(function_names, function_addresses)
+      function_call_hash = Hash.zip(function_call_names, function_call_addresses)
+
+      f_call_i = 0
+      while f_call_i < function_call_hash.size
+        f_call_name, f_call_addr = function_call_hash.to_a[f_call_i]
+        buffer.seek(f_call_addr, IO::Seek::Set)
+        buffer.write_bytes(function_hash[f_call_name])
+        f_call_i += 1
+      end
+      
       buffer.to_slice
     end
   end
