@@ -58,7 +58,8 @@ module Noon
         spacing_bytes -= 1
       end
 
-      buffer.write_bytes(8192.to_u32)       # size of image
+      image_size = (binary.size + (0x1000 - 1)) & ~(0x1000 - 1)
+      buffer.write_bytes(image_size.to_u32) # size of image
       buffer.write_bytes(512.to_u32)        # size of headers
       buffer.write_bytes(0x00000000.to_u32) # checksum
       buffer.write_bytes(10.to_u16)         # subsystem
@@ -82,7 +83,7 @@ module Noon
       buffer.write(".text\0\0\0".to_slice)   # section name
       buffer.write_bytes(binary.size.to_u32) # virtual size
       buffer.write_bytes(0x1000.to_u32)      # virtual address
-      buffer.write_bytes(512.to_u32)         # size of raw data
+      buffer.write_bytes(code_size.to_u32)   # size of raw data
       buffer.write_bytes(512.to_u32)         # pointer to raw data
 
       spacing_bytes = 12
