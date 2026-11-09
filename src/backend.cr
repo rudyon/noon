@@ -46,7 +46,8 @@ module Noon
         spacing_bytes -= 1
       end
 
-      buffer.write_bytes(0x00001000.to_u32) # entry point RVA
+      entry_point_rva = 0x1000
+      buffer.write_bytes(entry_point_rva.to_u32)
       buffer.write_bytes(0x00001000.to_u32) # base of code
       buffer.write_bytes(0x00100000.to_u64) # image base
       buffer.write_bytes(4096.to_u32)       # section alignment
@@ -59,6 +60,7 @@ module Noon
       end
 
       image_size = (binary.size + (0x1000 - 1)) & ~(0x1000 - 1)
+      image_size += entry_point_rva
       buffer.write_bytes(image_size.to_u32) # size of image
       buffer.write_bytes(512.to_u32)        # size of headers
       buffer.write_bytes(0x00000000.to_u32) # checksum
