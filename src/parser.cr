@@ -132,8 +132,7 @@ module Noon
       params = [] of AST::Symbol
 
       if reader.peek.kind == Token::Kind::Symbol
-        consumed = reader.consume
-        name, reader = parse_symbol(reader, consumed)
+        name = reader.consume.lexeme
       else
         abort("error: expected #{Token::Kind::Symbol} but found #{reader.peek}")
       end
@@ -155,7 +154,6 @@ module Noon
             abort("error: unexpected #{consumed}")
           end
         end
-
         reader.consume
       end
 
@@ -166,7 +164,7 @@ module Noon
         abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek}")
       end
 
-      {AST::Function.new(name.name, params, body), reader}
+      {AST::Function.new(name, params, body), reader}
     end
 
     def self.parse(tokens : Array(Token::Token))

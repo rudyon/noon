@@ -131,22 +131,24 @@ module Noon
 
       ir.each do |op|
         case op
-        when .is_a?(FunctionBegin)
+        when FunctionBegin
           s += "FUNCTION_BEGIN #{op.name}\n"
-        when .is_a?(FunctionEnd)
+        when FunctionEnd
           s += "FUNCTION_END\n"
-        when .is_a?(FFI)
+        when Parameter
+          s += "PARAMETER #{op.index}\n"
+        when FFI
           s += "FFI \"#{op.string}\"\n"
-        when .is_a?(Call)
+        when Call
           s += "CALL #{op.name}\n"
-        when .is_a?(Push)
+        when Push
           case op.value
-          when .is_a?(Int32)
+          when Int32
             s += "PUSH #{op.value}\n"
-          when .is_a?(String)
+          when String
             s += "PUSH #{op.value}\n"
           end
-        when .is_a?(Return)
+        when Return
           s += "RETURN\n"
         end
       end
