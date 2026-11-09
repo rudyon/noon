@@ -8,8 +8,6 @@ module Noon
       CurlyClose
       ParenOpen
       ParenClose
-      Colon
-      Asterisk
       DoubleQuote
       Number
       Symbol

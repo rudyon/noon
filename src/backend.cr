@@ -118,6 +118,8 @@ module Noon
       buffer = IO::Memory.new
       function = IO::Memory.new
       functions = [] of IO::Memory
+      function_names = [] of String
+      function_addresses = [] of Int32
 
       abi = "Noon"
       in_function = false
@@ -126,6 +128,7 @@ module Noon
         case op
         when .is_a?(IR::FunctionBegin)
           function = IO::Memory.new
+          function_names.push(op.name)
           in_function = true
 
           function.write_byte(0x55.to_u8) # push rbp
@@ -171,11 +174,11 @@ module Noon
           if in_function
             # push imm32
             function.write_byte(0x68.to_u8)
-            function.write_bytes(op.value)
+            function.write_bytes(op.value.to_u32)
           else
             # push imm32
             buffer.write_byte(0x68.to_u8)
-            buffer.write_bytes(op.value)
+            buffer.write_bytes(op.value.to_u32)
           end
         when .is_a?(IR::Return)
           buffer.write_byte(0x5d.to_u8) # pop rbp
@@ -183,7 +186,10 @@ module Noon
         end
       end
 
-      buffer.write(functions.join.to_slice)
+      functions.each do |f|
+        function_addresses.push(buffer.pos)
+        buffer.write(f.to_slice)
+      end
 
       buffer.to_slice
     end

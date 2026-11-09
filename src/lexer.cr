@@ -67,10 +67,6 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::ParenOpen, "("))
         when ')'
           tokens.push(Token::Token.new(Token::Kind::ParenClose, ")"))
-        when ':'
-          tokens.push(Token::Token.new(Token::Kind::Colon, ":"))
-        when '*'
-          tokens.push(Token::Token.new(Token::Kind::Asterisk, "*"))
         when '"'
           tokens.push(Token::Token.new(Token::Kind::DoubleQuote, "\""))
         when .number?

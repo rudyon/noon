@@ -28,9 +28,34 @@ module Noon
       end
     end
 
-    def self.parse_symbol(token : Token::Token)
-      String
-      token.lexeme
+    def self.parse_symbol(reader : Reader, token : Token::Token)
+      {AST::Symbol | AST::Call, Reader}
+
+      if reader.peek.kind == Token::Kind::ParenOpen
+        reader.consume
+        args = [] of AST::Argument
+
+        while reader.peek.kind != Token::Kind::ParenClose
+          consumed = reader.consume
+          case consumed.kind
+          when Token::Kind::Number
+            args.push(parse_number(token))
+          when Token::Kind::DoubleQuote
+            s, reader = parse_string(reader)
+            args.push(s)
+          when Token::Kind::Symbol
+            sbl, reader = parse_symbol(reader, consumed)
+            args.push(sbl)
+          else
+            abort("error: unexpected #{consumed}")
+          end
+        end
+        reader.consume
+
+        {AST::Call.new(token.lexeme, args), reader}
+      else
+        {AST::Symbol.new(token.lexeme), reader}
+      end
     end
 
     def self.parse_number(token : Token::Token)
@@ -46,9 +71,15 @@ module Noon
         consumed = reader.consume
         case consumed.kind
         when Token::Kind::EOF
-          abort("error: expected #{Token::Kind::DoubleQuote} but found #{consumed.kind}")
+          abort("error: expected #{Token::Kind::DoubleQuote} but found #{consumed}")
         when Token::Kind::Symbol
-          s.push(parse_symbol(consumed))
+          sbl, reader = parse_symbol(reader, consumed)
+          case sbl
+          when AST::Symbol
+            s.push(sbl.name)
+          when AST::Call
+            s.push(sbl.name) # TODO: fix this
+          end
         when Token::Kind::Number
           s.push(parse_number(consumed).to_s)
         end
@@ -65,14 +96,14 @@ module Noon
         reader.consume
         string, reader = parse_string(reader)
       else
-        abort("error: expected #{Token::Kind::DoubleQuote} but found #{reader.peek.kind}")
+        abort("error: expected #{Token::Kind::DoubleQuote} but found #{reader.peek}")
       end
 
       if reader.peek.kind == Token::Kind::Function
         reader.consume
         function, reader = parse_function(reader)
       else
-        abort("error: expected #{Token::Kind::Function} but found #{reader.peek.kind}")
+        abort("error: expected #{Token::Kind::Function} but found #{reader.peek}")
       end
 
       {AST::FFI.new(string, function), reader}
@@ -86,7 +117,7 @@ module Noon
         consumed = reader.consume
         case consumed.kind
         when Token::Kind::EOF
-          abort("error: expected #{Token::Kind::CurlyClose} but found #{consumed.kind}")
+          abort("error: expected #{Token::Kind::CurlyClose} but found #{consumed}")
         when Token::Kind::Number
           body.push(parse_number(consumed))
         end
@@ -98,24 +129,33 @@ module Noon
 
     def self.parse_function(reader : Reader)
       {AST::Function, Reader}
+      params = [] of AST::Symbol
+
       if reader.peek.kind == Token::Kind::Symbol
-        name = parse_symbol(reader.consume)
+        consumed = reader.consume
+        name, reader = parse_symbol(reader, consumed)
       else
-        abort("error: expected #{Token::Kind::Symbol} but found #{reader.peek.kind}")
+        abort("error: expected #{Token::Kind::Symbol} but found #{reader.peek}")
       end
 
-      params = [] of AST::Parameter
       if reader.peek.kind == Token::Kind::ParenOpen
         reader.consume
+
         while reader.peek.kind != Token::Kind::ParenClose
           consumed = reader.consume
           case consumed.kind
-          when Token::Kind::EOF
-            abort("error: expected #{Token::Kind::ParenClose} but found #{consumed.kind}")
           when Token::Kind::Symbol
-            params.push(AST::Parameter.new(parse_symbol(consumed)))
+            sbl, reader = parse_symbol(reader, consumed)
+            if sbl.is_a?(AST::Symbol)
+              params.push(sbl)
+            else
+              abort("error: unexpected #{sbl}")
+            end
+          else
+            abort("error: unexpected #{consumed}")
           end
         end
+
         reader.consume
       end
 
@@ -123,10 +163,10 @@ module Noon
         reader.consume
         body, reader = parse_function_body(reader)
       else
-        abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek.kind}")
+        abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek}")
       end
 
-      {AST::Function.new(name, params, body), reader}
+      {AST::Function.new(name.name, params, body), reader}
     end
 
     def self.parse(tokens : Array(Token::Token))
@@ -146,6 +186,9 @@ module Noon
         when Token::Kind::DoubleQuote
           s, reader = parse_string(reader)
           ast.push(s)
+        when Token::Kind::Symbol
+          sbl, reader = parse_symbol(reader, consumed)
+          ast.push(sbl)
         when Token::Kind::Number
           ast.push(parse_number(consumed))
         end

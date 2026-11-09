@@ -1,6 +1,6 @@
 module Noon
   module IR
-    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Push | Return
+    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | Push | Return
 
     struct FunctionBegin
       property name
@@ -28,10 +28,17 @@ module Noon
       end
     end
 
+    struct Call
+      property name
+
+      def initialize(@name : String)
+      end
+    end
+
     struct Push
       property value
 
-      def initialize(@value : Int32)
+      def initialize(@value : Int32 | String)
       end
     end
 
@@ -73,9 +80,30 @@ module Noon
       nodes
     end
 
+    def self.lower_call(call : AST::Call)
+      Array(Operation)
+      nodes = [] of Operation
+
+      call.args.each do |arg|
+        case arg
+        when .is_a?(AST::Integer32)
+          nodes.push(lower_int32(arg))
+        when .is_a?(AST::NoonString)
+          nodes.push(lower_string(arg))
+        end
+      end
+
+      nodes.push(Call.new(call.name))
+    end
+
     def self.lower_int32(int32 : AST::Integer32)
       Operation
       Push.new(int32.value)
+    end
+
+    def self.lower_string(string : AST::NoonString)
+      Operation
+      Push.new(string.string)
     end
 
     def self.lower(ast : Array(AST::Node))
@@ -88,6 +116,8 @@ module Noon
           ir.concat(lower_function(node))
         when .is_a?(AST::FFI)
           ir.concat(lower_ffi(node))
+        when .is_a?(AST::Call)
+          ir.concat(lower_call(node))
         when .is_a?(AST::Integer32)
           ir.push(lower_int32(node))
         end
@@ -107,8 +137,15 @@ module Noon
           s += "FUNCTION_END\n"
         when .is_a?(FFI)
           s += "FFI \"#{op.string}\"\n"
+        when .is_a?(Call)
+          s += "CALL #{op.name}\n"
         when .is_a?(Push)
-          s += "PUSH #{op.value}\n"
+          case op.value
+          when .is_a?(Int32)
+            s += "PUSH #{op.value}\n"
+          when .is_a?(String)
+            s += "PUSH #{op.value}\n"
+          end
         when .is_a?(Return)
           s += "RETURN\n"
         end
