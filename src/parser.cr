@@ -120,6 +120,14 @@ module Noon
           abort("error: expected #{Token::Kind::CurlyClose} but found #{consumed}")
         when Token::Kind::Number
           body.push(parse_number(consumed))
+        when Token::Kind::Symbol
+          sbl, reader = (parse_symbol(reader, consumed))
+          case sbl
+          when AST::Symbol
+            body.push(sbl)
+          when AST::Call
+            # TODO: support function calls inside function bodies
+          end
         end
       end
       reader.consume

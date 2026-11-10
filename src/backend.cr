@@ -177,16 +177,18 @@ module Noon
 
           if in_function
             # jmp rel32
-            function.write_byte(0xe9.to_u8)
+            function.write_byte(0xe8.to_u8)
             function_call_addresses.push(function.pos)
             function.write_bytes(0.to_u32)
           else
             # jmp rel32
-            buffer.write_byte(0xe9.to_u8)
+            buffer.write_byte(0xe8.to_u8)
             function_call_addresses.push(buffer.pos)
             buffer.write_bytes(0.to_u32)
           end
-        when IR::Push
+        when IR::PushSymbol
+          # TODO: support pushing of symbols aka variables basically
+        when IR::PushValue
           if in_function
             # push imm32
             function.write_byte(0x68.to_u8)
@@ -214,7 +216,7 @@ module Noon
       while f_call_i < function_call_hash.size
         f_call_name, f_call_addr = function_call_hash.to_a[f_call_i]
         buffer.seek(f_call_addr, IO::Seek::Set)
-        buffer.write_bytes(function_hash[f_call_name])
+        buffer.write_bytes(function_hash[f_call_name] - (f_call_addr + 4))
         f_call_i += 1
       end
 

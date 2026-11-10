@@ -1,6 +1,6 @@
 module Noon
   module IR
-    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | Push | Return
+    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | PushSymbol | PushValue | Return
 
     struct FunctionBegin
       property name
@@ -35,7 +35,14 @@ module Noon
       end
     end
 
-    struct Push
+    struct PushSymbol
+      property name
+
+      def initialize(@name : String)
+      end
+    end
+
+    struct PushValue
       property value
 
       def initialize(@value : Int32 | String)
@@ -60,10 +67,18 @@ module Noon
 
       function.body.each do |node|
         case node
-        when .is_a?(AST::Function)
+        in AST::Function
           nodes.concat(lower_function(node))
-        when .is_a?(AST::Integer32)
-          nodes.push(Push.new(node.value))
+        in AST::FFI
+          nodes.concat(lower_ffi(node))
+        in AST::Call
+          nodes.concat(lower_call(node))
+        in AST::Integer32
+          nodes.push(lower_int32(node))
+        in AST::NoonString
+          nodes.push(lower_string(node))
+        in AST::Symbol
+          nodes.push(lower_symbol(node))
         end
       end
       nodes.push(FunctionEnd.new)
@@ -86,10 +101,14 @@ module Noon
 
       call.args.each do |arg|
         case arg
-        when .is_a?(AST::Integer32)
+        in AST::Call
+          nodes.concat(lower_call(arg))
+        in AST::Integer32
           nodes.push(lower_int32(arg))
-        when .is_a?(AST::NoonString)
+        in AST::NoonString
           nodes.push(lower_string(arg))
+        in AST::Symbol
+          nodes.push(lower_symbol(arg))
         end
       end
 
@@ -98,12 +117,17 @@ module Noon
 
     def self.lower_int32(int32 : AST::Integer32)
       Operation
-      Push.new(int32.value)
+      PushValue.new(int32.value)
     end
 
     def self.lower_string(string : AST::NoonString)
       Operation
-      Push.new(string.string)
+      PushValue.new(string.string)
+    end
+
+    def self.lower_symbol(sbl : AST::Symbol)
+      Operation
+      PushSymbol.new(sbl.name)
     end
 
     def self.lower(ast : Array(AST::Node))
@@ -112,14 +136,18 @@ module Noon
 
       ast.each do |node|
         case node
-        when .is_a?(AST::Function)
+        in AST::Function
           ir.concat(lower_function(node))
-        when .is_a?(AST::FFI)
+        in AST::FFI
           ir.concat(lower_ffi(node))
-        when .is_a?(AST::Call)
+        in AST::Call
           ir.concat(lower_call(node))
-        when .is_a?(AST::Integer32)
+        in AST::Integer32
           ir.push(lower_int32(node))
+        in AST::NoonString
+          ir.push(lower_string(node))
+        in AST::Symbol
+          ir.push(lower_symbol(node))
         end
       end
       ir.push(Return.new)
@@ -131,24 +159,26 @@ module Noon
 
       ir.each do |op|
         case op
-        when FunctionBegin
+        in FunctionBegin
           s += "FUNCTION_BEGIN #{op.name}\n"
-        when FunctionEnd
+        in FunctionEnd
           s += "FUNCTION_END\n"
-        when Parameter
+        in Parameter
           s += "PARAMETER #{op.index}\n"
-        when FFI
+        in FFI
           s += "FFI \"#{op.string}\"\n"
-        when Call
+        in Call
           s += "CALL #{op.name}\n"
-        when Push
+        in PushSymbol
+          s += "PUSH #{op.name}\n"
+        in PushValue
           case op.value
-          when Int32
+          in Int32
             s += "PUSH #{op.value}\n"
-          when String
-            s += "PUSH #{op.value}\n"
+          in String
+            s += "PUSH \"#{op.value}\"\n"
           end
-        when Return
+        in Return
           s += "RETURN\n"
         end
       end
