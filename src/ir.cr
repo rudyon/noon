@@ -1,6 +1,6 @@
 module Noon
   module IR
-    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | PushSymbol | PushValue | Return
+    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | PushParam | PushSymbol | PushValue | Return
 
     struct FunctionBegin
       property name
@@ -32,6 +32,13 @@ module Noon
       property name
 
       def initialize(@name : String)
+      end
+    end
+
+    struct PushParam
+      property index
+
+      def initialize(@index : Int32)
       end
     end
 
@@ -78,7 +85,21 @@ module Noon
         in AST::NoonString
           nodes.push(lower_string(node))
         in AST::Symbol
-          nodes.push(lower_symbol(node))
+          sbl = lower_symbol(node)
+
+          i = 0
+          function.params.each do |param|
+            if sbl.is_a?(PushSymbol)
+              if param.name == sbl.name
+                sbl = PushParam.new(i)
+              end
+              i += 1
+            else
+              abort("error: what?")
+            end
+          end
+
+          nodes.push(sbl)
         end
       end
       nodes.push(FunctionEnd.new)
@@ -169,6 +190,8 @@ module Noon
           s += "FFI \"#{op.string}\"\n"
         in Call
           s += "CALL #{op.name}\n"
+        in PushParam
+          s += "PUSH_PARAMETER #{op.index}\n"
         in PushSymbol
           s += "PUSH #{op.name}\n"
         in PushValue
