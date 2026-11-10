@@ -178,11 +178,17 @@ module Noon
           when Token::Kind::Symbol
             param_sbl, reader = parse_symbol(reader, consumed)
 
-            consumed = reader.consume
-            if consumed.kind != Token::Kind::Colon
-              abort("error: expected #{Token::Kind::Colon} but found #{consumed}")
+            if param_sbl.is_a?(AST::Symbol)
+              consumed = reader.consume
+              if consumed.kind != Token::Kind::Colon
+                abort("error: expected #{Token::Kind::Colon} but found #{consumed}")
+              else
+                param_type, reader = parse_type(reader)
+              end
+
+              params.push(AST::Parameter.new(param_sbl, param_type))
             else
-              param_type, reader = parse_type(reader)
+              abort("error: unexpected #{param_sbl}")
             end
           else
             abort("error: unexpected #{consumed}")
