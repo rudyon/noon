@@ -188,9 +188,8 @@ module Noon
           end
         when IR::PushParam
           if in_function
-            function.write_byte(0x48.to_u8)
-            function.write_bytes(0x458b.to_u16)
-            function.write_bytes((16 + (8 * op.index)).to_u8)
+            function.write_bytes(0x75FF.to_u16) # push qword
+            function.write_byte((16 + (8 * op.index)).to_u8)
           else
             abort("error: compiler error")
           end
@@ -207,7 +206,6 @@ module Noon
             buffer.write_bytes(op.value.to_u32)
           end
         when IR::Return
-          buffer.write_byte(0x58.to_u8) # pop rax
           buffer.write_byte(0xc3.to_u8) # ret
         end
       end
