@@ -180,11 +180,23 @@ module Noon
             function.write_byte(0xe8.to_u8)
             function_call_addresses.push(function.pos)
             function.write_bytes(0.to_u32)
+
+            if op.params > 0
+              function.write_bytes(0x8348.to_u16) # add
+              function.write_byte(0xc4.to_u8)     # rsp
+              function.write_byte((8 * op.params).to_u8)
+            end
           else
             # jmp rel32
             buffer.write_byte(0xe8.to_u8)
             function_call_addresses.push(buffer.pos)
             buffer.write_bytes(0.to_u32)
+
+            if op.params > 0
+              buffer.write_bytes(0x8348.to_u16) # add
+              buffer.write_byte(0xc4.to_u8)     # rsp
+              buffer.write_byte((8 * op.params).to_u8)
+            end
           end
         when IR::PushParam
           if in_function

@@ -29,9 +29,9 @@ module Noon
     end
 
     struct Call
-      property name
+      property name, params
 
-      def initialize(@name : String)
+      def initialize(@name : String, @params : Int32)
       end
     end
 
@@ -133,7 +133,7 @@ module Noon
         end
       end
 
-      nodes.push(Call.new(call.name))
+      nodes.push(Call.new(call.name, call.args.size))
     end
 
     def self.lower_int32(int32 : AST::Integer32)
@@ -189,7 +189,7 @@ module Noon
         in FFI
           s += "FFI \"#{op.string}\"\n"
         in Call
-          s += "CALL #{op.name}\n"
+          s += "CALL #{op.name} #{op.params}\n"
         in PushParam
           s += "PUSH_PARAMETER #{op.index}\n"
         in PushSymbol
