@@ -1,12 +1,21 @@
+require "./type"
+
 module Noon
   module AST
-    alias Node = Function | FFI | Call | Integer32 | NoonString | Symbol
-    alias Argument = Call | Integer32 | NoonString | Symbol
+    alias Node = Function | Parameter | FFI | Call | UInteger32 | NoonString | Symbol | TypeAnnotation
+    alias Argument = Call | UInteger32 | NoonString | Symbol
 
     struct Function
-      property name, params, body
+      property name, params, type, body
 
-      def initialize(@name : String, @params : Array(Symbol), @body : Array(Node))
+      def initialize(@name : String, @params : Array(Parameter), @type : TypeAnnotation, @body : Array(Node))
+      end
+    end
+
+    struct Parameter
+      property symbol, type
+
+      def initialize(@symbol : Symbol, @type : TypeAnnotation)
       end
     end
 
@@ -24,10 +33,10 @@ module Noon
       end
     end
 
-    struct Integer32
+    struct UInteger32
       property value
 
-      def initialize(@value : Int32)
+      def initialize(@value : UInt32)
       end
     end
 
@@ -42,6 +51,13 @@ module Noon
       property name
 
       def initialize(@name : String)
+      end
+    end
+
+    struct TypeAnnotation
+      property type
+
+      def initialize(@type : Type::Type)
       end
     end
   end

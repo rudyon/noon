@@ -69,6 +69,14 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::ParenClose, ")"))
         when '"'
           tokens.push(Token::Token.new(Token::Kind::DoubleQuote, "\""))
+        when '-'
+          if scanner.peek == '>'
+            tokens.push(Token::Token.new(Token::Kind::RArrow, "->"))
+          else
+            abort("error: did you mean ->?")
+          end
+        when ':'
+          tokens.push(Token::Token.new(Token::Kind::Colon, ":"))
         when .number?
           matched, scanner = Lexer.match(scanner, ->(c : Char) { c.number? })
           tokens.push(Token::Token.new(Token::Kind::Number, consumed + matched))

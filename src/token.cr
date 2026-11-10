@@ -9,6 +9,8 @@ module Noon
       ParenOpen
       ParenClose
       DoubleQuote
+      RArrow
+      Colon
       Number
       Symbol
     end

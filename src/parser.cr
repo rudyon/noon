@@ -28,6 +28,30 @@ module Noon
       end
     end
 
+    def self.parse_type(reader : Reader)
+      {AST::TypeAnnotation, Reader}
+      type = Type::Type::Nil
+
+      consumed = reader.consume
+      if consumed.kind == Token::Kind::Symbol
+        case consumed.lexeme
+        when "UInt"
+          case reader.consume.lexeme
+          when "32"
+            type = Type::Type::UInt32
+          else
+            abort("error: no typed named UInt did you mean UInt32?")
+          end
+        when "String"
+          type = Type::Type::String
+        else
+          abort("error: #{consumed.lexeme} is not a valid type")
+        end
+      end
+
+      {AST::TypeAnnotation.new(type), reader}
+    end
+
     def self.parse_symbol(reader : Reader, token : Token::Token)
       {AST::Symbol | AST::Call, Reader}
 
@@ -59,8 +83,8 @@ module Noon
     end
 
     def self.parse_number(token : Token::Token)
-      AST::Integer32
-      AST::Integer32.new(token.lexeme.to_i)
+      AST::UInteger32
+      AST::UInteger32.new(token.lexeme.to_u32)
     end
 
     def self.parse_string(reader : Reader)
@@ -137,7 +161,7 @@ module Noon
 
     def self.parse_function(reader : Reader)
       {AST::Function, Reader}
-      params = [] of AST::Symbol
+      params = [] of AST::Parameter
 
       if reader.peek.kind == Token::Kind::Symbol
         name = reader.consume.lexeme
@@ -152,17 +176,26 @@ module Noon
           consumed = reader.consume
           case consumed.kind
           when Token::Kind::Symbol
-            sbl, reader = parse_symbol(reader, consumed)
-            if sbl.is_a?(AST::Symbol)
-              params.push(sbl)
+            param_sbl, reader = parse_symbol(reader, consumed)
+
+            consumed = reader.consume
+            if consumed.kind != Token::Kind::Colon
+              abort("error: expected #{Token::Kind::Colon} but found #{consumed}")
             else
-              abort("error: unexpected #{sbl}")
+              param_type, reader = parse_type(reader)
             end
           else
             abort("error: unexpected #{consumed}")
           end
         end
         reader.consume
+      end
+
+      if reader.peek.kind == Token::Kind::RArrow
+        reader.consume
+        type, reader = parse_type(reader)
+      else
+        abort("error: expected #{Token::Kind::RArrow} but found #{reader.peek}")
       end
 
       if reader.peek.kind == Token::Kind::CurlyOpen
@@ -172,7 +205,7 @@ module Noon
         abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek}")
       end
 
-      {AST::Function.new(name, params, body), reader}
+      {AST::Function.new(name, params, type, body), reader}
     end
 
     def self.parse(tokens : Array(Token::Token))

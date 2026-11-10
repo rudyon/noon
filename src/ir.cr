@@ -53,7 +53,7 @@ module Noon
     struct PushValue
       property value
 
-      def initialize(@value : Int32 | String)
+      def initialize(@value : UInt32 | String)
       end
     end
 
@@ -80,23 +80,23 @@ module Noon
 
       function.body.each do |node|
         case node
-        in AST::Function
+        when AST::Function
           nodes.concat(lower_function(node))
-        in AST::FFI
+        when AST::FFI
           nodes.concat(lower_ffi(node))
-        in AST::Call
+        when AST::Call
           nodes.concat(lower_call(node))
-        in AST::Integer32
+        when AST::UInteger32
           nodes.push(lower_int32(node))
-        in AST::NoonString
+        when AST::NoonString
           nodes.push(lower_string(node))
-        in AST::Symbol
+        when AST::Symbol
           sbl = lower_symbol(node)
 
           i = 0
           function.params.each do |param|
             if sbl.is_a?(PushSymbol)
-              if param.name == sbl.name
+              if param.symbol == sbl.name
                 sbl = PushParam.new(i)
               end
               i += 1
@@ -135,7 +135,7 @@ module Noon
         case arg
         in AST::Call
           nodes.concat(lower_call(arg))
-        in AST::Integer32
+        in AST::UInteger32
           nodes.push(lower_int32(arg))
         in AST::NoonString
           nodes.push(lower_string(arg))
@@ -147,7 +147,7 @@ module Noon
       nodes.push(Call.new(call.name, call.args.size))
     end
 
-    def self.lower_int32(int32 : AST::Integer32)
+    def self.lower_int32(int32 : AST::UInteger32)
       Operation
       PushValue.new(int32.value)
     end
@@ -168,17 +168,17 @@ module Noon
 
       ast.each do |node|
         case node
-        in AST::Function
+        when AST::Function
           ir.concat(lower_function(node))
-        in AST::FFI
+        when AST::FFI
           ir.concat(lower_ffi(node))
-        in AST::Call
+        when AST::Call
           ir.concat(lower_call(node))
-        in AST::Integer32
+        when AST::UInteger32
           ir.push(lower_int32(node))
-        in AST::NoonString
+        when AST::NoonString
           ir.push(lower_string(node))
-        in AST::Symbol
+        when AST::Symbol
           ir.push(lower_symbol(node))
         end
       end
@@ -215,7 +215,7 @@ module Noon
           s += "PUSH #{op.name}\n"
         in PushValue
           case op.value
-          in Int32
+          in UInt32
             s += "PUSH #{op.value}\n"
           in String
             s += "PUSH \"#{op.value}\"\n"

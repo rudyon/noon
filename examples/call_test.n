@@ -1,4 +1,4 @@
-f test(int) {
+f test(int: UInt32) -> UInt32 {
 	int
 }
 

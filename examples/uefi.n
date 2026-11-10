@@ -1,3 +1,3 @@
-ffi "C" f efi_main(image_handler system_table) {
+ffi "C" f efi_main(image_handler : UInt32, system_table : UInt32) -> UInt32 {
 	0
 }

@@ -1,5 +1,6 @@
 require "option_parser"
 require "./token"
+require "./type"
 require "./lexer"
 require "./ast"
 require "./parser"
