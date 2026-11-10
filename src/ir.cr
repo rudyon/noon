@@ -1,7 +1,7 @@
 module Noon
   module IR
     alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | PushParam | PushSymbol | PushValue | PopReturn | Return
-    alias Expression = Call | PushSymbol | PushValue
+    alias Expression = PushSymbol | PushValue
 
     struct FunctionBegin
       property name
@@ -185,6 +185,8 @@ module Noon
 
       if ir.last.is_a?(Expression)
         ir.push(PopReturn.new)
+        ir.push(Return.new)
+      elsif ir.last.is_a?(Call)
         ir.push(Return.new)
       end
 
