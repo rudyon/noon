@@ -57,6 +57,10 @@ module Noon
         abort("error: what?")
       end
 
+      if call.args.size != function.params.size
+        abort("error: too many arguments in call to #{call.name}")
+      end
+
       i = 0
       call.args.each do |arg|
         inferred_type = infer(arg, env)
@@ -100,10 +104,7 @@ module Noon
         abort("error: expected #{expected_type} but found #{inferred_type}")
       end
 
-      signature = Function.new(params, inferred_type)
-      env.push("function #{function.name}", signature)
-
-      signature
+      Function.new(params, inferred_type)
     end
 
     def self.check(ast : Array(AST::Node))
@@ -113,7 +114,7 @@ module Noon
       ast.each do |node|
         case node
         when AST::Function
-          check_function(node)
+         env.push("function #{node.name}", check_function(node))
         when AST::FFI
           check_ffi(node, env)
         when Expression
