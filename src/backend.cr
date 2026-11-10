@@ -73,8 +73,7 @@ module Noon
         spacing_bytes -= 1
       end
 
-      image_size = (binary.size + (0x1000 - 1)) & ~(0x1000 - 1)
-      image_size += entry_point_rva
+      image_size = ((0x1000 + binary.size) + (0x1000 - 1)) & ~(0x1000 - 1)
       buffer.write_bytes(image_size.to_u32) # size of image
       buffer.write_bytes(512.to_u32)        # size of headers
       buffer.write_bytes(0x00000000.to_u32) # checksum
