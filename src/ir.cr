@@ -1,6 +1,7 @@
 module Noon
   module IR
     alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | PushParam | PushSymbol | PushValue | Return
+    alias Expression = Call | PushSymbol | PushValue
 
     struct FunctionBegin
       property name
@@ -171,7 +172,12 @@ module Noon
           ir.push(lower_symbol(node))
         end
       end
-      ir.push(Return.new)
+
+      if ir.last.is_a?(Expression)
+        ir.push(Return.new)
+      end
+
+      ir
     end
 
     def self.to_s(ir : Array(Operation))
