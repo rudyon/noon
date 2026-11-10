@@ -151,7 +151,7 @@ module Noon
           when AST::Symbol
             body.push(sbl)
           when AST::Call
-            # TODO: support function calls inside function bodies
+            abort("error: function calls inside function bodies are not supported yet") # TODO
           end
         end
       end
