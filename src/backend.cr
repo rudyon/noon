@@ -1,6 +1,16 @@
 module Noon
   module Backend
-    def self.format(binary : Bytes)
+    def self.target_triple(target : String, ir : Array(IR::Operation))
+      case target
+      when "x86_64-unknown-uefi"
+        binary, functions = compile_x86_64(ir)
+        format_uefi(binary, functions)
+      else
+        abort("error: #{target} target is not supported")
+      end
+    end
+
+    def self.format_uefi(binary : Bytes, functions : Hash(String, Int32))
       Bytes
       buffer = IO::Memory.new
 
@@ -46,7 +56,11 @@ module Noon
         spacing_bytes -= 1
       end
 
-      entry_point_rva = 0x1000
+      entry_point_rva = functions["efi_main"]?
+      if !entry_point_rva
+        abort("error: couldn't find efi_main entry point for x86_64-unknown-uefi")
+      end
+      entry_point_rva += 0x1000
       buffer.write_bytes(entry_point_rva.to_u32)
       buffer.write_bytes(0x00001000.to_u32) # base of code
       buffer.write_bytes(0x00100000.to_u64) # image base
@@ -113,8 +127,8 @@ module Noon
       buffer.to_slice
     end
 
-    def self.compile(ir : Array(IR::Operation))
-      Bytes
+    def self.compile_x86_64(ir : Array(IR::Operation))
+      {Bytes, Hash(String, Int32)}
       buffer = IO::Memory.new
       function = IO::Memory.new
       functions = [] of IO::Memory
@@ -238,7 +252,7 @@ module Noon
         f_call_i += 1
       end
 
-      buffer.to_slice
+      {buffer.to_slice, function_hash}
     end
   end
 end

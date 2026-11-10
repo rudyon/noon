@@ -10,13 +10,18 @@ module Noon
   def self.main
     emit_ir = false
     output_file = ""
+    target = Crystal::TARGET_TRIPLE
     files = [] of String
 
     OptionParser.parse do |parser|
       parser.banner = "usage: noon [arguments] [FILEs]"
 
-      parser.on("-emit-ir", "emit intermediate represtation") do
+      parser.on("-ir", "emit intermediate represtation") do
         emit_ir = true
+      end
+
+      parser.on("-t", "--target TARGET", "specify target triple") do |_target|
+        target = _target
       end
 
       parser.on("-o", "--output FILE", "specify output file") do |file|
@@ -62,9 +67,8 @@ module Noon
     if emit_ir
       File.write(output_file, IR.to_s(ir))
     else
-      binary = Backend.compile(ir)
-      pe32x = Backend.format(binary)
-      File.write(output_file, pe32x, perm: 0o755)
+      bin = Backend.target_triple(target, ir)
+      File.write(output_file, bin, perm: 0o755)
     end
   end
 end
