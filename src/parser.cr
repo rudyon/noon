@@ -30,7 +30,6 @@ module Noon
 
     def self.parse_type(reader : Reader)
       {AST::TypeAnnotation, Reader}
-      type = Type::Type::Nil
 
       consumed = reader.consume
       if consumed.kind == Token::Kind::Symbol
@@ -47,6 +46,8 @@ module Noon
         else
           abort("error: #{consumed.lexeme} is not a valid type")
         end
+      else
+        abort("error: unexpected #{consumed}")
       end
 
       {AST::TypeAnnotation.new(type), reader}
