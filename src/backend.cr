@@ -153,8 +153,6 @@ module Noon
           function.write_bytes(0xe589.to_u16)
         when IR::FunctionEnd
           if in_function
-            function.write_byte(0x58.to_u8) # pop rax
-
             # mov rsp, rbp
             function.write_byte(0x48.to_u8)
             function.write_bytes(0xec89.to_u16)
@@ -229,6 +227,12 @@ module Noon
             # push imm32
             buffer.write_byte(0x68.to_u8)
             buffer.write_bytes(op.value.to_u32)
+          end
+        when IR::PopReturn
+          if in_function
+            function.write_byte(0x58.to_u8) # pop rax
+          else
+            buffer.write_byte(0x58.to_u8) # pop rax
           end
         when IR::Return
           buffer.write_byte(0xc3.to_u8) # ret

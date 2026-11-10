@@ -1,6 +1,6 @@
 module Noon
   module IR
-    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | PushParam | PushSymbol | PushValue | Return
+    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | PushParam | PushSymbol | PushValue | PopReturn | Return
     alias Expression = Call | PushSymbol | PushValue
 
     struct FunctionBegin
@@ -57,6 +57,11 @@ module Noon
       end
     end
 
+    struct PopReturn
+      def initialize
+      end
+    end
+
     struct Return
       def initialize
       end
@@ -103,6 +108,11 @@ module Noon
           nodes.push(sbl)
         end
       end
+
+      if nodes.last.is_a?(Expression)
+        nodes.push(PopReturn.new)
+      end
+
       nodes.push(FunctionEnd.new)
 
       nodes
@@ -174,6 +184,7 @@ module Noon
       end
 
       if ir.last.is_a?(Expression)
+        ir.push(PopReturn.new)
         ir.push(Return.new)
       end
 
@@ -207,6 +218,8 @@ module Noon
           in String
             s += "PUSH \"#{op.value}\"\n"
           end
+        in PopReturn
+          s += "POP_RETURN\n"
         in Return
           s += "RETURN\n"
         end
