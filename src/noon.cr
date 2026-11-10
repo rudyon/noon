@@ -4,6 +4,7 @@ require "./type"
 require "./lexer"
 require "./ast"
 require "./parser"
+require "./type_checker"
 require "./ir"
 require "./backend"
 
@@ -63,6 +64,9 @@ module Noon
     source = File.read(input_file)
     tokens = Lexer.tokenize(source)
     ast = Parser.parse(tokens)
+
+    TypeChecker.check(ast)
+
     ir = IR.lower(ast)
 
     if emit_ir

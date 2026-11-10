@@ -1,5 +1,3 @@
-require "./type"
-
 module Noon
   module AST
     alias Node = Function | Parameter | FFI | Call | UInteger32 | NoonString | Symbol | TypeAnnotation
