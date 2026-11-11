@@ -1,20 +1,18 @@
 module Noon
   module TypeChecker
-    alias Expression = AST::Call | AST::UInteger32 | AST::NoonString | AST::Symbol
-
     struct Enviroment
       property env
 
       def initialize
-        @env = Hash(String, Type::Type | Function).new
+        @env = Hash(String, Type::Annotation | Function).new
       end
 
-      def push(key : String, type : Type::Type | Function)
+      def push(key : String, type : Type::Annotation | Function)
         @env[key] = type
       end
 
       def get(key : String)
-        Type::Type
+        Type::Annotation
         if @env.has_key?(key)
           @env[key]
         else
@@ -26,28 +24,53 @@ module Noon
     struct Function
       property params, type
 
-      def initialize(@params : Array(Type::Type), @type : Type::Type)
+      def initialize(@params : Array(Type::Annotation), @type : Type::Annotation)
       end
     end
 
-    def self.infer(expr : Expression, env : Enviroment)
-      Type::Type
+    def self.infer(expr : AST::Expression, env : Enviroment)
+      Type::Annotation
+      type = Type::Annotation::Nil
+
       case expr
+      in AST::If
+        type = check_if(expr, env)
       in AST::Call
         type = check_call(expr, env)
+      in AST::Condition
+        check_condition(expr, env)
+        type = Type::Annotation::Bool
       in AST::UInteger32
-        type = Type::Type::UInt32
+        type = Type::Annotation::UInt32
       in AST::NoonString
-        type = Type::Type::String
+        type = Type::Annotation::ArrayofChar8
       in AST::Symbol
         type = env.get("symbol #{expr.name}")
       end
 
-      if !type.is_a?(Function)
+      if type == Type::Annotation
         type
       else
         abort("error: what?")
       end
+    end
+
+    def self.check_body(parent : AST::Node)
+      parent.body.each do |node|
+        case node
+        when AST::Function
+          check_function(node)
+        when AST::FFI
+          check_ffi(node, env)
+        when AST::Expression
+          infer(node, env)
+        else
+          abort("error: what?")
+        end
+      end
+    end
+
+    def self.check_if(if_node : AST::If, env : Enviroment)
     end
 
     def self.check_call(call : AST::Call, env : Enviroment)
@@ -73,6 +96,24 @@ module Noon
       function.type
     end
 
+    def self.check_condition(condition : AST::Condition, env : Enviroment)
+      left = condition.left
+      right = condition.right
+
+      left_type = infer(left, env)
+      if right
+        right_type = infer(right, env)
+      end
+
+      if right_type
+        if left_type != right_type
+          abort("error: can't compare #{left_type} with #{right_type}")
+        end
+      elsif left_type != Bool
+        abort("error: can't use #{left_type} in comparison")
+      end
+    end
+
     def self.check_ffi(ffi : AST::FFI, env : Enviroment)
       env.push("function #{ffi.function.name}", check_function(ffi.function))
     end
@@ -80,24 +121,13 @@ module Noon
     def self.check_function(function : AST::Function)
       Function
       env = Enviroment.new
-      params = [] of Type::Type
+      params = [] of Type::Annotation
       expected_type = function.type.type
-      inferred_type : Type::Type = Type::Type::Nil
+      inferred_type = Type::Annotation::Nil
 
       function.params.each do |param|
         params.push(param.type.type)
         env.push("symbol #{param.symbol.name}", param.type.type)
-      end
-
-      function.body.each do |node|
-        case node
-        when AST::Function
-          check_function(node)
-        when AST::FFI
-          check_ffi(node, env)
-        when Expression
-          inferred_type = infer(node, env)
-        end
       end
 
       if inferred_type != expected_type
@@ -117,7 +147,7 @@ module Noon
           env.push("function #{node.name}", check_function(node))
         when AST::FFI
           check_ffi(node, env)
-        when Expression
+        when AST::Expression
           infer(node, env)
         end
       end

@@ -28,21 +28,21 @@ module Noon
       end
     end
 
-    def self.parse_type(reader : Reader)
+    def self.parse_typeannotation(reader : Reader)
       {AST::TypeAnnotation, Reader}
 
       consumed = reader.consume
       if consumed.kind == Token::Kind::Symbol
         case consumed.lexeme
+        when "Bool"
+          type = Type::Annotation::Bool
         when "UInt"
           case reader.consume.lexeme
           when "32"
-            type = Type::Type::UInt32
+            type = Type::Annotation::UInt32
           else
             abort("error: no typed named UInt did you mean UInt32?")
           end
-        when "String"
-          type = Type::Type::String
         else
           abort("error: #{consumed.lexeme} is not a valid type")
         end
@@ -53,21 +53,39 @@ module Noon
       {AST::TypeAnnotation.new(type), reader}
     end
 
+    def self.parse_expression(reader : Reader, token : Token::Token)
+      {AST::Expression, Reader}
+
+      case token
+      when Token::Kind::DoubleQuote
+        node, reader = parse_string(reader)
+        {node, reader}
+      when Token::Kind::Symbol
+        node, reader = parse_symbol(reader, token)
+        {node, reader}
+      when Token::Kind::Number
+        node = parse_number(token)
+        {node, reader}
+      else
+        abort("unexpected #{token}")
+      end
+    end
+
     def self.parse_symbol(reader : Reader, token : Token::Token)
       {AST::Symbol | AST::Call, Reader}
 
       if reader.peek.kind == Token::Kind::ParenOpen
         reader.consume
-        args = [] of AST::Argument
+        args = [] of AST::Expression
 
         while reader.peek.kind != Token::Kind::ParenClose
           consumed = reader.consume
           case consumed.kind
-          when Token::Kind::Number
-            args.push(parse_number(consumed))
           when Token::Kind::DoubleQuote
             s, reader = parse_string(reader)
             args.push(s)
+          when Token::Kind::Number
+            args.push(parse_number(consumed))
           when Token::Kind::Symbol
             sbl, reader = parse_symbol(reader, consumed)
             args.push(sbl)
@@ -134,7 +152,7 @@ module Noon
       {AST::FFI.new(string, function), reader}
     end
 
-    def self.parse_function_body(reader : Reader)
+    def self.parse_body(reader : Reader)
       {Array(AST::Node), Reader}
       body = [] of AST::Node
 
@@ -151,7 +169,7 @@ module Noon
           when AST::Symbol
             body.push(sbl)
           when AST::Call
-            abort("error: function calls inside function bodies are not supported yet") # TODO
+            abort("error: function calls inside bodies are not supported yet") # TODO
           end
         end
       end
@@ -184,7 +202,7 @@ module Noon
               if consumed.kind != Token::Kind::Colon
                 abort("error: expected #{Token::Kind::Colon} but found #{consumed}")
               else
-                param_type, reader = parse_type(reader)
+                param_type, reader = parse_typeannotation(reader)
               end
 
               params.push(AST::Parameter.new(param_sbl, param_type))
@@ -200,19 +218,56 @@ module Noon
 
       if reader.peek.kind == Token::Kind::RArrow
         reader.consume
-        type, reader = parse_type(reader)
+        type, reader = parse_typeannotation(reader)
       else
         abort("error: expected #{Token::Kind::RArrow} but found #{reader.peek}")
       end
 
       if reader.peek.kind == Token::Kind::CurlyOpen
         reader.consume
-        body, reader = parse_function_body(reader)
+        body, reader = parse_body(reader)
       else
         abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek}")
       end
 
       {AST::Function.new(name, params, type, body), reader}
+    end
+
+    def self.parse_if(reader : Reader)
+      {AST::If, Reader}
+
+      if reader.peek.kind.expression?
+        consumed = reader.consume
+        left, reader = parse_expression(reader, consumed)
+      else
+        abort("error: expected a condition after if")
+      end
+
+      if reader.peek.kind.comparison?
+        comparison = reader.consume
+      end
+
+      if comparison
+        if reader.peek.kind.expression?
+          consumed = reader.consume
+          right, reader = parse_expression(reader, consumed)
+        else
+          abort("error: expected an expression after #{comparison} but found #{consumed}")
+        end
+
+        condition = AST::Condition.new(left, AST::Comparison.new(comparison), right)
+      else
+        condition = AST::Condition.new(left)
+      end
+
+      if reader.peek.kind == Token::Kind::CurlyOpen
+        reader.consume
+        body, reader = parse_body(reader)
+      else
+        abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek}")
+      end
+
+      {AST::If.new(condition, body), reader}
     end
 
     def self.parse(tokens : Array(Token::Token))
@@ -223,20 +278,18 @@ module Noon
       while !reader.eof?
         consumed = reader.consume
         case consumed.kind
+        when Token::Kind::If
+          node, reader = parse_if(reader)
+          ast.push(node)
         when Token::Kind::Function
-          f, reader = parse_function(reader)
-          ast.push(f)
+          node, reader = parse_function(reader)
+          ast.push(node)
         when Token::Kind::FFI
-          ffi, reader = parse_ffi(reader)
-          ast.push(ffi)
-        when Token::Kind::DoubleQuote
-          s, reader = parse_string(reader)
-          ast.push(s)
-        when Token::Kind::Symbol
-          sbl, reader = parse_symbol(reader, consumed)
-          ast.push(sbl)
-        when Token::Kind::Number
-          ast.push(parse_number(consumed))
+          node, reader = parse_ffi(reader)
+          ast.push(node)
+        when .expression?
+          node, reader = parse_expression(reader, consumed)
+          ast.push(node)
         end
       end
 

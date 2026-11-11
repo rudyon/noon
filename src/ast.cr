@@ -1,7 +1,14 @@
 module Noon
   module AST
-    alias Node = Function | Parameter | FFI | Call | UInteger32 | NoonString | Symbol | TypeAnnotation
-    alias Argument = Call | UInteger32 | NoonString | Symbol
+    alias Node = If | Function | Parameter | FFI | Call | UInteger32 | NoonString | Symbol | TypeAnnotation
+    alias Expression = Call | UInteger32 | NoonString | Symbol
+
+    struct If
+      property condition, body
+
+      def initialize(@condition : Condition, @body : Array(Node))
+      end
+    end
 
     struct Function
       property name, params, type, body
@@ -27,7 +34,14 @@ module Noon
     struct Call
       property name, args
 
-      def initialize(@name : String, @args : Array(Argument))
+      def initialize(@name : String, @args : Array(Expression))
+      end
+    end
+
+    struct Condition
+      property left, comparison, right
+
+      def initialize(@left : Expression, @comparison : Comparison? = nil, @right : Expression? = nil)
       end
     end
 
@@ -52,10 +66,17 @@ module Noon
       end
     end
 
+    struct Comparison
+      property comparison
+
+      def initialize(@comparison : Token::Token)
+      end
+    end
+
     struct TypeAnnotation
       property type
 
-      def initialize(@type : Type::Type)
+      def initialize(@type : Type::Annotation)
       end
     end
   end

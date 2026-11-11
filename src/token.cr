@@ -4,6 +4,7 @@ module Noon
       EOF
       If
       Type
+      True
       Struct
       Function
       FFI
@@ -26,6 +27,24 @@ module Noon
       Number
       Symbol
       NotEquals
+
+      def expression? : Bool
+        case self
+        when DoubleQuote, Number, Symbol
+          true
+        else
+          false
+        end
+      end
+
+      def comparison? : Bool
+        case self
+        when NotEquals
+          true
+        else
+          false
+        end
+      end
     end
 
     struct Token

@@ -1,7 +1,17 @@
 module Noon
   module IR
-    alias Operation = FunctionBegin | FunctionEnd | Parameter | FFI | Call | PushParam | PushSymbol | PushValue | PopReturn | Return
+    alias Operation = If | Then | FunctionBegin | FunctionEnd | Parameter | FFI | Call | Comparison | PushParam | PushSymbol | PushValue | PopReturn | Return
     alias Expression = PushSymbol | PushValue
+
+    struct If
+      def initialize
+      end
+    end
+
+    struct Then
+      def initialize
+      end
+    end
 
     struct FunctionBegin
       property name
@@ -36,6 +46,13 @@ module Noon
       end
     end
 
+    struct Comparison
+      property comparison
+
+      def initialize(@comparison : Token::Token)
+      end
+    end
+
     struct PushParam
       property index
 
@@ -67,6 +84,74 @@ module Noon
       end
     end
 
+    def self.lower_comp(comp : AST::Comparison)
+      Operation
+      Comparison.new(comp.comparison)
+    end
+
+    def self.lower_cond(cond : AST::Condition)
+      Array(Operation)
+      nodes = [] of Operation
+      
+      compare_from = cond.left
+      case compare_from
+      when AST::Call
+        nodes.concat(lower_call(compare_from))
+      when AST::UInteger32
+        nodes.push(lower_uint32(compare_from))
+      when AST::NoonString
+        nodes.push(lower_string(compare_from))
+      when AST::Symbol
+        nodes.push(lower_symbol(compare_from))
+      end
+
+      comp = cond.comparison
+      compare_to = cond.right
+      if !comp.nil?
+        nodes.push(lower_comp(comp))
+        case compare_to
+        when AST::Call
+          nodes.concat(lower_call(compare_to))
+        when AST::UInteger32
+          nodes.push(lower_uint32(compare_to))
+        when AST::NoonString
+          nodes.push(lower_string(compare_to))
+        when AST::Symbol
+          nodes.push(lower_symbol(compare_to))
+        end
+      end
+
+      nodes
+    end
+
+    def self.lower_if(if_node : AST::If)
+      Array(Operation)
+      nodes = [] of Operation
+
+      nodes.push(If.new)
+
+      nodes.concat(lower_cond(if_node.condition))
+
+      if_node.body.each do |node|
+        case node
+        when AST::Function
+          nodes.concat(lower_function(node))
+        when AST::FFI
+          nodes.concat(lower_ffi(node))
+        when AST::Call
+          nodes.concat(lower_call(node))
+        when AST::UInteger32
+          nodes.push(lower_uint32(node))
+        when AST::NoonString
+          nodes.push(lower_string(node))
+        when AST::Symbol
+          nodes.push(lower_symbol(node))
+        end
+      end
+
+      nodes.push(Then.new)
+    end
+
     def self.lower_function(function : AST::Function)
       Array(Operation)
       nodes = [] of Operation
@@ -87,7 +172,7 @@ module Noon
         when AST::Call
           nodes.concat(lower_call(node))
         when AST::UInteger32
-          nodes.push(lower_int32(node))
+          nodes.push(lower_uint32(node))
         when AST::NoonString
           nodes.push(lower_string(node))
         when AST::Symbol
@@ -133,10 +218,14 @@ module Noon
 
       call.args.each do |arg|
         case arg
+        in AST::If
+          nodes.concat(lower_if(arg))
         in AST::Call
           nodes.concat(lower_call(arg))
+        in AST::Condition
+          nodes.concat(lower_cond(arg))
         in AST::UInteger32
-          nodes.push(lower_int32(arg))
+          nodes.push(lower_uint32(arg))
         in AST::NoonString
           nodes.push(lower_string(arg))
         in AST::Symbol
@@ -147,7 +236,7 @@ module Noon
       nodes.push(Call.new(call.name, call.args.size))
     end
 
-    def self.lower_int32(int32 : AST::UInteger32)
+    def self.lower_uint32(int32 : AST::UInteger32)
       Operation
       PushValue.new(int32.value)
     end
@@ -175,7 +264,7 @@ module Noon
         when AST::Call
           ir.concat(lower_call(node))
         when AST::UInteger32
-          ir.push(lower_int32(node))
+          ir.push(lower_uint32(node))
         when AST::NoonString
           ir.push(lower_string(node))
         when AST::Symbol
@@ -199,6 +288,10 @@ module Noon
 
       ir.each do |op|
         case op
+        in If
+          s += "IF\n"
+        in Then
+          s += "THEN\n"
         in FunctionBegin
           s += "FUNCTION_BEGIN #{op.name}\n"
         in FunctionEnd
@@ -209,6 +302,8 @@ module Noon
           s += "FFI \"#{op.string}\"\n"
         in Call
           s += "CALL #{op.name} #{op.params}\n"
+        in Comparison
+          s += "#{op.comparison.lexeme}\n"
         in PushParam
           s += "PUSH_PARAMETER #{op.index}\n"
         in PushSymbol

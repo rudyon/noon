@@ -73,7 +73,7 @@ module Noon
         when 'i'
           s, err = scanner.look("f")
           if !err
-            tokens.push(Token::Token.new(Token::Kind::Function, "i#{s}"))
+            tokens.push(Token::Token.new(Token::Kind::If, "i#{s}"))
           elsif s == ""
             break
           else
@@ -82,16 +82,25 @@ module Noon
         when 't'
           s, err = scanner.look("ype")
           if !err
-            tokens.push(Token::Token.new(Token::Kind::Function, "t#{s}"))
+            tokens.push(Token::Token.new(Token::Kind::Type, "t#{s}"))
+          elsif s == ""
+            # continue
+          else
+            abort("error: no keyword t#{s} did you mean type?")
+          end
+
+          s, err = scanner.look("rue")
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::True, "t#{s}"))
           elsif s == ""
             break
           else
-            abort("error: no keyword t#{s} did you mean type?")
+            abort("error: no keyword t#{s} did you mean true?")
           end
         when 's'
           s, err = scanner.look("truct")
           if !err
-            tokens.push(Token::Token.new(Token::Kind::Function, "s#{s}"))
+            tokens.push(Token::Token.new(Token::Kind::Struct, "s#{s}"))
           elsif s == ""
             break
           else
@@ -103,7 +112,7 @@ module Noon
           else
             s, err = scanner.look("fi")
             if !err
-              tokens.push(Token::Token.new(Token::Kind::Function, "f#{s}"))
+              tokens.push(Token::Token.new(Token::Kind::FFI, "f#{s}"))
             elsif s == ""
               break
             else
@@ -135,7 +144,7 @@ module Noon
         when '-'
           s, err = scanner.look(">")
           if !err
-            tokens.push(Token::Token.new(Token::Kind::Function, "-#{s}"))
+            tokens.push(Token::Token.new(Token::Kind::RArrow, "-#{s}"))
           elsif s == ""
             break
           else
@@ -150,7 +159,7 @@ module Noon
         when '!'
           s, err = scanner.look("=")
           if !err
-            tokens.push(Token::Token.new(Token::Kind::Function, "!#{s}"))
+            tokens.push(Token::Token.new(Token::Kind::NotEquals, "!#{s}"))
           elsif s == ""
             break
           else
