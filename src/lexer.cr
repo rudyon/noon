@@ -7,19 +7,42 @@ module Noon
         @pos = 0
       end
 
-      def peek
+      def peek(offset = 0)
         Char
-        @source[@pos]
+        @source[@pos + offset]
       end
 
-      def advance
-        @pos += 1
+      def look(string : String)
+        {String, Bool}
+        s = ""
+
+        i = 0
+        while i < string.size
+          c = peek(i)
+          if string[i] != c
+            {s, true}
+          else
+            i += 1
+          end
+        end
+
+        consume(string.size)
+
+        if peek().whitespace? || eof?()
+          {s, false}
+        else
+          {s, true}
+        end
       end
 
-      def consume
+      def advance(steps = 1)
+        @pos += steps
+      end
+
+      def consume(amount = 0)
         Char
-        c = peek()
-        advance()
+        c = peek(amount)
+        advance(amount + 1)
         c
       end
 
@@ -47,16 +70,44 @@ module Noon
       while !scanner.eof?
         consumed = scanner.consume
         case consumed
+        when 'i'
+          s, err = scanner.look("f")
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::Function, "i#{s}"))
+          elsif s == ""
+            break
+          else
+            abort("error: unexpected i#{s} did you mean if?")
+          end
+        when 't'
+          s, err = scanner.look("ype")
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::Function, "t#{s}"))
+          elsif s == ""
+            break
+          else
+            abort("error: no keyword t#{s} did you mean type?")
+          end
+        when 's'
+          s, err = scanner.look("truct")
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::Function, "s#{s}"))
+          elsif s == ""
+            break
+          else
+            abort("error: no keyword s#{s} did you mean struct?")
+          end
         when 'f'
           if scanner.peek.whitespace? || scanner.eof?
             tokens.push(Token::Token.new(Token::Kind::Function, "f"))
-          elsif scanner.peek == 'f' # TODO: find a more elegant way to do this
-            scanner.consume
-            if scanner.peek == 'i'
-              scanner.consume
-              tokens.push(Token::Token.new(Token::Kind::FFI, "ffi"))
+          else
+            s, err = scanner.look("fi")
+            if !err
+              tokens.push(Token::Token.new(Token::Kind::Function, "f#{s}"))
+            elsif s == ""
+              break
             else
-              abort("error: no keyword named ff. did you mean ffi?")
+              abort("error: no keyword f#{s} did you mean ffi?")
             end
           end
         when '{'
@@ -67,16 +118,44 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::ParenOpen, "("))
         when ')'
           tokens.push(Token::Token.new(Token::Kind::ParenClose, ")"))
+        when '['
+          tokens.push(Token::Token.new(Token::Kind::BracketOpen, "["))
+        when ']'
+          tokens.push(Token::Token.new(Token::Kind::BracketClose, "]"))
         when '"'
           tokens.push(Token::Token.new(Token::Kind::DoubleQuote, "\""))
+        when '\\'
+          tokens.push(Token::Token.new(Token::Kind::Backslash, "\\"))
+        when '*'
+          tokens.push(Token::Token.new(Token::Kind::Asterisk, "*"))
+        when '\n'
+          tokens.push(Token::Token.new(Token::Kind::Newline, "\\n"))
+        when '='
+          tokens.push(Token::Token.new(Token::Kind::Equals, "="))
         when '-'
-          if scanner.peek == '>'
-            tokens.push(Token::Token.new(Token::Kind::RArrow, "->"))
+          s, err = scanner.look(">")
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::Function, "-#{s}"))
+          elsif s == ""
+            break
           else
-            abort("error: did you mean ->?")
+            abort("error: unexpected -#{s} did you mean ->?")
           end
         when ':'
           tokens.push(Token::Token.new(Token::Kind::Colon, ":"))
+        when ','
+          tokens.push(Token::Token.new(Token::Kind::Comma, ","))
+        when '#'
+          tokens.push(Token::Token.new(Token::Kind::Hash, "#"))
+        when '!'
+          s, err = scanner.look("=")
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::Function, "!#{s}"))
+          elsif s == ""
+            break
+          else
+            abort("error: unexpected !#{s} did you mean !=?")
+          end
         when .number?
           matched, scanner = Lexer.match(scanner, ->(c : Char) { c.number? })
           tokens.push(Token::Token.new(Token::Kind::Number, consumed + matched))
