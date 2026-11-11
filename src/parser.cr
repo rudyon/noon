@@ -233,6 +233,36 @@ module Noon
       {AST::Function.new(name, params, type, body), reader}
     end
 
+    def self.parse_type(reader : Reader)
+      {AST::Type, Reader}
+
+      if reader.peek.kind == Token::Kind::Symbol
+        consumed = reader.consume
+        sbl, reader = parse_symbol(reader, consumed)
+
+        if sbl.is_a?(AST::Call)
+          abort("error: what?")
+        end
+      else
+        abort("error: expected symbol after type")
+      end
+
+      if reader.peek.kind == Token::Kind::Equals
+        reader.consume
+      else
+        abort("error: expected an equals in type declaration")
+      end
+
+      if reader.peek.kind == Token::Kind::Symbol
+        consumed = reader.consume
+        type, reader = parse_typeannotation(reader)
+      else
+        abort("error: expected symbol after equals in type declaration")
+      end
+
+      {AST::Type.new(sbl, type), reader}
+    end
+
     def self.parse_if(reader : Reader)
       {AST::If, Reader}
 
@@ -280,6 +310,9 @@ module Noon
         case consumed.kind
         when Token::Kind::If
           node, reader = parse_if(reader)
+          ast.push(node)
+        when Token::Kind::Type
+          node, reader = parse_type(reader)
           ast.push(node)
         when Token::Kind::Function
           node, reader = parse_function(reader)

@@ -1,12 +1,19 @@
 module Noon
   module AST
-    alias Node = If | Function | Parameter | FFI | Call | UInteger32 | NoonString | Symbol | TypeAnnotation
+    alias Node = If | Type | Function | Parameter | FFI | Call | UInteger32 | NoonString | Symbol | TypeAnnotation
     alias Expression = Call | UInteger32 | NoonString | Symbol
 
     struct If
       property condition, body
 
       def initialize(@condition : Condition, @body : Array(Node))
+      end
+    end
+
+    struct Type
+      property symbol, type
+
+      def initialize(@symbol : Symbol, @type : TypeAnnotation)
       end
     end
 
@@ -76,7 +83,7 @@ module Noon
     struct TypeAnnotation
       property type
 
-      def initialize(@type : Type::Annotation)
+      def initialize(@type : Noon::Type::Annotation)
       end
     end
   end

@@ -92,7 +92,7 @@ module Noon
     def self.lower_cond(cond : AST::Condition)
       Array(Operation)
       nodes = [] of Operation
-      
+
       compare_from = cond.left
       case compare_from
       when AST::Call

@@ -1,6 +1,6 @@
 module Noon
   module Type
-    alias Type = Nil | NoonBool | NoonUInt32 | NoonChar8
+    alias Type = NoonNil | NoonBool | NoonUInt32 | NoonChar8
 
     enum Annotation : UInt8
       Nil
@@ -13,8 +13,7 @@ module Noon
       ArrayofChar8
     end
 
-    struct Nil
-
+    struct NoonNil
       def initialize
       end
     end
@@ -32,7 +31,6 @@ module Noon
       def intialize(@uint : UInt32)
       end
     end
-
 
     struct NoonChar8
       property char
