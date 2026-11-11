@@ -7,7 +7,7 @@ module Noon
         case @triple
         when "x86_64-unknown-uefi"
           @c_abi = "UEFI"
-          @uefi_abi =  "UEFI"
+          @uefi_abi = "UEFI"
         else
           abort("error: #{@triple} target is not supported")
         end
@@ -21,7 +21,7 @@ module Noon
         @uefi_abi
       end
     end
-    
+
     def self.compile(target_triple : String, ir : Array(IR::Operation))
       target = Target.new(target_triple)
       case target_triple
@@ -206,12 +206,12 @@ module Noon
           abi = op.string
 
           case abi
-            when "C"
-              abi = target.c_abi
-            when "UEFI"
-              abi = target.uefi_abi?
-            else
-             abort("error: unsupported ABI for #{target.triple}")
+          when "C"
+            abi = target.c_abi
+          when "UEFI"
+            abi = target.uefi_abi?
+          else
+            abort("error: unsupported ABI for #{target.triple}")
           end
         when IR::Call
           function_call_names.push(op.name)

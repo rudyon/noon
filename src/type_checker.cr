@@ -114,7 +114,7 @@ module Noon
       ast.each do |node|
         case node
         when AST::Function
-         env.push("function #{node.name}", check_function(node))
+          env.push("function #{node.name}", check_function(node))
         when AST::FFI
           check_ffi(node, env)
         when Expression
