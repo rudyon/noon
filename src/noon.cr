@@ -12,7 +12,7 @@ module Noon
   def self.main
     emit_ir = false
     output_file = ""
-    target = Crystal::TARGET_TRIPLE
+    target_triple = Crystal::TARGET_TRIPLE
     files = [] of String
 
     OptionParser.parse do |parser|
@@ -22,8 +22,8 @@ module Noon
         emit_ir = true
       end
 
-      parser.on("-t", "--target TARGET", "specify target triple") do |_target|
-        target = _target
+      parser.on("-t", "--target TARGET", "specify target triple") do |target|
+        target_triple = target
       end
 
       parser.on("-o", "--output FILE", "specify output file") do |file|
@@ -72,7 +72,7 @@ module Noon
     if emit_ir
       File.write(output_file, IR.to_s(ir))
     else
-      bin = Backend.target_triple(target, ir)
+      bin = Backend.compile(target_triple, ir)
       File.write(output_file, bin, perm: 0o755)
     end
   end

@@ -1,12 +1,33 @@
 module Noon
   module Backend
-    def self.target_triple(target : String, ir : Array(IR::Operation))
-      case target
+    struct Target
+      property triple, c_abi, uefi_abi
+
+      def initialize(@triple : String)
+        case @triple
+        when "x86_64-unknown-uefi"
+          @c_abi = "UEFI"
+          @uefi_abi =  "UEFI"
+        else
+          abort("error: #{@triple} target is not supported")
+        end
+      end
+
+      def c_abi
+        @c_abi
+      end
+
+      def uefi_abi?
+        @uefi_abi
+      end
+    end
+    
+    def self.compile(target_triple : String, ir : Array(IR::Operation))
+      target = Target.new(target_triple)
+      case target_triple
       when "x86_64-unknown-uefi"
-        binary, functions = compile_x86_64(ir)
+        binary, functions = compile_x86_64(ir, target)
         format_uefi(binary, functions)
-      else
-        abort("error: #{target} target is not supported")
       end
     end
 
@@ -126,7 +147,7 @@ module Noon
       buffer.to_slice
     end
 
-    def self.compile_x86_64(ir : Array(IR::Operation))
+    def self.compile_x86_64(ir : Array(IR::Operation), target : Target)
       {Bytes, Hash(String, Int32)}
       buffer = IO::Memory.new
       function = IO::Memory.new
@@ -183,6 +204,15 @@ module Noon
           end
         when IR::FFI
           abi = op.string
+
+          case abi
+            when "C"
+              abi = target.c_abi
+            when "UEFI"
+              abi = target.uefi_abi?
+            else
+             abort("error: unsupported ABI for #{target.triple}")
+          end
         when IR::Call
           function_call_names.push(op.name)
 

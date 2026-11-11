@@ -1,5 +1,0 @@
-f test(int: UInt32) -> UInt32 {
-	int
-}
-
-test(0)
