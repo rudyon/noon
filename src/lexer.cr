@@ -17,7 +17,6 @@ module Noon
       def look(string : String)
         {String, Bool}
         s = ""
-        puts "looking for #{trace()}#{string} at #{@row}:#{@col}"
 
         i = 0
         while i < string.size
@@ -28,8 +27,6 @@ module Noon
           s += peek(i)
           i += 1
         end
-
-        puts "located #{trace()}#{s}"
 
         if s == string
           if trace(1).whitespace? || @pos == 0
