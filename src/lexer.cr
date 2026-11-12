@@ -97,20 +97,17 @@ module Noon
           if !err
             tokens.push(Token::Token.new(Token::Kind::Type, "t#{s}"))
           elsif s == ""
-            t, scanner = tokenize_number_or_symbol(consumed, scanner)
-            tokens.push(t)
+            s, err = scanner.look("rue")
+            if !err
+              tokens.push(Token::Token.new(Token::Kind::True, "t#{s}"))
+            elsif s == ""
+              t, scanner = tokenize_number_or_symbol(consumed, scanner)
+              tokens.push(t)
+            else
+              abort("error: no keyword t#{s}#{scanner.peek} did you mean true?")
+            end
           else
             abort("error: no keyword t#{s}#{scanner.peek} did you mean type?")
-          end
-
-          s, err = scanner.look("rue")
-          if !err
-            tokens.push(Token::Token.new(Token::Kind::True, "t#{s}"))
-          elsif s == ""
-            t, scanner = tokenize_number_or_symbol(consumed, scanner)
-            tokens.push(t)
-          else
-            abort("error: no keyword t#{s}#{scanner.peek} did you mean true?")
           end
         when 's'
           s, err = scanner.look("truct")
@@ -149,7 +146,7 @@ module Noon
         when ']'
           tokens.push(Token::Token.new(Token::Kind::BracketClose, "]"))
         when '\''
-          tokens.push(Token::Token.new(Token::Kind::SingleQuote, "\'"))
+          tokens.push(Token::Token.new(Token::Kind::SingleQuote, "'"))
         when '"'
           tokens.push(Token::Token.new(Token::Kind::DoubleQuote, "\""))
         when '\\'
