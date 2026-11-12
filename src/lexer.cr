@@ -9,7 +9,7 @@ module Noon
         @col = 0
       end
 
-      def wrapped_in_whitespace?(string : String, consumed_starting_char : Bool)
+      def wrapped_in_whitespace?(string : String, consumed_starting_char : Bool, accept_file_start : Bool)
         Bool
         if consumed_starting_char
           offset = 0
@@ -17,7 +17,13 @@ module Noon
           offset = 1
         end
 
-        if trace(offset + string.size).whitespace? && peek(string.size).whitespace?
+        if accept_file_start
+          condition = (@pos == 1 - offset)
+        else
+          condition = true
+        end
+
+        if (trace(offset + string.size).whitespace? || condition) && peek(string.size).whitespace?
           true
         else
           false
@@ -44,7 +50,7 @@ module Noon
         end
 
         if s == string
-          if wrapped_in_whitespace?(string, true)
+          if wrapped_in_whitespace?(string, true, true)
             consume(string.size)
             {s, false}
           else
