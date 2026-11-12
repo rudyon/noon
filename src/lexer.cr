@@ -23,7 +23,7 @@ module Noon
           condition = true
         end
 
-        if (trace(offset + string.size).whitespace? || condition) && peek(string.size).whitespace?
+        if (trace(offset + 1).whitespace? || condition) && peek(string.size).whitespace?
           true
         else
           false
@@ -52,8 +52,10 @@ module Noon
         if s == string
           if wrapped_in_whitespace?(string, true, true)
             consume(string.size)
+            puts "found '#{trace(string.size + 1)}#{trace(string.size)}#{s}#{peek()}'"
             {s, false}
           else
+            puts "missed '#{trace(1)}#{trace()}#{s}#{peek(string.size)}'"
             {s, true}
           end
         else

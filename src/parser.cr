@@ -127,7 +127,6 @@ module Noon
           s.push(parse_number(consumed).to_s)
         end
       end
-      reader.consume
 
       string = AST::NoonString.new(s.join(" ")) # TODO: this turns all whitespace into a single space. it shouldn't do that
       {string, reader}
