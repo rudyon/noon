@@ -6,10 +6,12 @@ module Noon
       Nil
       Bool
       UInt32
+      UInt64
       Char8
       ArrayofNil
       ArrayofBool
       ArrayofUInt32
+      ArrayofUInt64
       ArrayofChar8
     end
 
@@ -28,14 +30,21 @@ module Noon
     struct NoonUInt32
       property uint
 
-      def intialize(@uint : UInt32)
+      def initialize(@uint : UInt32)
+      end
+    end
+
+    struct NoonUInt64
+      property uint
+
+      def initialize(@uint : UInt64)
       end
     end
 
     struct NoonChar8
       property char
 
-      def intialize(@char : Char)
+      def initialize(@char : Char)
       end
     end
   end

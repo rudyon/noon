@@ -109,8 +109,8 @@ module Noon
       when .number?
         n, scanner = match(scanner, ->(c : Char) { c.number? })
         {Token::Token.new(Token::Kind::Number, token + n), scanner}
-      when .letter?, '_', '!', '-'
-        s, scanner = match(scanner, ->(c : Char) { c.letter? || c == '_' || c == '!' || c == '-' })
+      when .letter?, .number?, '_', '!', '-'
+        s, scanner = match(scanner, ->(c : Char) { c.letter?  || c.number? || c == '_' || c == '!' || c == '-' })
         {Token::Token.new(Token::Kind::Symbol, token + s), scanner}
       else
         abort("error: #{scanner.loc} unrecognized character #{token}")
@@ -193,7 +193,7 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::Asterisk, "*"))
         when '\n'
           scanner.lf
-          tokens.push(Token::Token.new(Token::Kind::Newline, "\\n"))
+          tokens.push(Token::Token.new(Token::Kind::NewLine, "\\n"))
         when '.'
           tokens.push(Token::Token.new(Token::Kind::Period, "."))
         when '-'
@@ -224,7 +224,7 @@ module Noon
             tokens.push(Token::Token.new(Token::Kind::Bang, "!#{s}"))
           end
         when .whitespace?
-          # do nothing
+          next
         else
           t, scanner = tokenize_number_or_symbol(consumed, scanner)
           tokens.push(t)

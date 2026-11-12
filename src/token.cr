@@ -18,7 +18,7 @@ module Noon
       DoubleQuote
       Backslash
       Asterisk
-      Newline
+      NewLine
       Period
       Equals
       RArrow
@@ -43,6 +43,15 @@ module Noon
       def comparison? : Bool
         case self
         when NotEquals
+          true
+        else
+          false
+        end
+      end
+
+      def whitespace? : Bool
+        case self
+        when NewLine
           true
         else
           false

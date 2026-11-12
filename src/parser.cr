@@ -36,18 +36,15 @@ module Noon
         case consumed.lexeme
         when "Bool"
           type = Type::Annotation::Bool
-        when "UInt"
-          case reader.consume.lexeme
-          when "32"
-            type = Type::Annotation::UInt32
-          else
-            abort("error: no typed named UInt did you mean UInt32?")
-          end
+        when "UInt32"
+          type = Type::Annotation::UInt32
+        when "UInt64"
+          type = Type::Annotation::UInt64
         else
           abort("error: #{consumed.lexeme} is not a valid type")
         end
       else
-        abort("error: unexpected #{consumed}")
+        abort("error: unexpected type annotation #{consumed.kind}")
       end
 
       {AST::TypeAnnotation.new(type), reader}
@@ -84,13 +81,15 @@ module Noon
           when Token::Kind::DoubleQuote
             s, reader = parse_string(reader)
             args.push(s)
+          when Token::Kind::NewLine
+            # do nothing
           when Token::Kind::Number
             args.push(parse_number(consumed))
           when Token::Kind::Symbol
             sbl, reader = parse_symbol(reader, consumed)
             args.push(sbl)
           else
-            abort("error: unexpected #{consumed}")
+            abort("error: unexpected #{consumed.kind}")
           end
         end
         reader.consume
@@ -140,6 +139,7 @@ module Noon
       else
         abort("error: expected #{Token::Kind::DoubleQuote} but found #{reader.peek}")
       end
+      reader.consume
 
       consumed = reader.consume
       case consumed.kind
@@ -148,7 +148,7 @@ module Noon
       when Token::Kind::Struct
         declare, reader = parse_struct(reader)
       else
-        abort("error: expected #{Token::Kind::Function} or #{Token::Kind::Struct} but found #{reader.peek}")
+        abort("error: expected #{Token::Kind::Function} or #{Token::Kind::Struct} but found #{consumed.kind}")
       end
 
       {AST::External.new(string, declare), reader}
@@ -202,7 +202,7 @@ module Noon
             if param_sbl.is_a?(AST::Symbol)
               consumed = reader.consume
               if consumed.kind != Token::Kind::Colon
-                abort("error: expected #{Token::Kind::Colon} but found #{consumed}")
+                abort("error: expected #{Token::Kind::Colon} but found #{consumed.kind}")
               else
                 param_type, reader = parse_typeannotation(reader)
               end
@@ -212,7 +212,7 @@ module Noon
               abort("error: unexpected #{param_sbl}")
             end
           else
-            abort("error: unexpected #{consumed}")
+            abort("error: unexpected #{consumed.kind}")
           end
         end
 
@@ -223,14 +223,14 @@ module Noon
         reader.consume
         type, reader = parse_typeannotation(reader)
       else
-        abort("error: expected #{Token::Kind::RArrow} but found #{reader.peek}")
+        abort("error: expected #{Token::Kind::RArrow} but found #{reader.peek.kind}")
       end
 
       if reader.peek.kind == Token::Kind::CurlyOpen
         reader.consume
         body, reader = parse_body(reader)
       else
-        abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek}")
+        abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek.kind}")
       end
 
       {AST::Function.new(name, params, type, body), reader}
@@ -262,18 +262,23 @@ module Noon
 
             if prop_sbl.is_a?(AST::Symbol)
               consumed = reader.consume
-              if consumed.kind != Token::Kind::Colon
-                abort("error: expected #{Token::Kind::Colon} but found #{consumed}")
-              else
+              if consumed.kind == Token::Kind::Colon
                 prop_type, reader = parse_typeannotation(reader)
-              end
 
-              properties.push(AST::Property.new(prop_sbl, prop_type))
+                consumed = reader.consume
+                if consumed.kind == Token::Kind::Comma || reader.peek.kind == Token::Kind::CurlyClose
+                  properties.push(AST::Property.new(prop_sbl, prop_type))
+                else
+                  reader.consume
+                end
+              end
             else
-              abort("error: unexpected #{prop_sbl}")
+              abort("error: expected symbol but found #{prop_sbl}")
             end
+          when .whitespace?
+            next
           else
-            abort("error: unexpected #{consumed}")
+            abort("error: unexpected #{consumed.kind}")
           end
         end
 
@@ -311,7 +316,6 @@ module Noon
 
         {AST::Type.new(sbl, ext), reader}
       elsif reader.peek.kind == Token::Kind::Symbol
-        consumed = reader.consume
         type, reader = parse_typeannotation(reader)
 
         {AST::Type.new(sbl, type), reader}

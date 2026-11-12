@@ -1,9 +1,9 @@
 ext "UEFI" struct TableHeader {
-	signature   UInt64,
-	revision    UInt32,
-	header_size UInt32,
-	crc32       UInt32,
-	reserved    UInt32
+	signature:   UInt64,
+	revision:    UInt32,
+	header_size: UInt32,
+	crc32:       UInt32,
+	reserved:    UInt32
 }
 
 type Status = UInt64
@@ -51,48 +51,48 @@ type EnableCursor = ext "UEFI" fun (
 ) -> Status
 
 ext "UEFI" struct SimpleTextOutputMode {
-	max_mode       Int32,
-	mode           Int32,
-	attribute      Int32,
-	cursor_column  Int32,
-	cursor_row     Int32,
-	cursor_visible Bool
+	max_mode:       Int32,
+	mode:           Int32,
+	attribute:      Int32,
+	cursor_column:  Int32,
+	cursor_row:     Int32,
+	cursor_visible: Bool
 }
 
 ext "UEFI" struct SimpleTextOutputProtocol {
-	reset TextReset,
-	output_string TextString,
-	test_string TextString,
-	query_mode QueryMode,
-	set_mode SetMode,
-	set_attribute SetAttribute,
-	clear_screen ClearScreen,
-	set_cursor_position SetCursorPosition,
-	enable_cursor EnableCursor,
-	mode *SimpleTextOutputMode,
+	reset:               TextReset,
+	output_string:       TextString,
+	test_string:         TextString,
+	query_mode:          QueryMode,
+	set_mode:            SetMode,
+	set_attribute:       SetAttribute,
+	clear_screen:        ClearScreen,
+	set_cursor_position: SetCursorPosition,
+	enable_cursor:       EnableCursor,
+	mode:               *SimpleTextOutputMode
 }
 
 ext "UEFI" struct SystemTable {
-	header                  TableHeader,
-	firmware_vendor         *Char16,
-	firmware_revision       UInt32,
-	console_in_handle       *Void,
-	con_in                  *Void, # set to *Void for now because we don't need it yet
-	console_out_handle      *Void,
-	con_out                 *SimpleTextOutputProtocol,
-	stderr_handle           *Void,
-	stderr                  *SimpleTextOutputProtocol,
-	runtime_services        *Void, # set to *Void for now because we don't need it yet
-	boot_services           *Void, # set to *Void for now because we don't need it yet
-	number_of_table_entries UInt64,
-	configuration_table     *Void  # set to *Void for now because we don't need it yet
+	header:                  TableHeader,
+	firmware_vendor:         *Char16,
+	firmware_revision:       UInt32,
+	console_in_handle:       *Void,
+	con_in:                  *Void, # set to *Void for now because we don't need it yet
+	console_out_handle:      *Void,
+	con_out:                 *SimpleTextOutputProtocol,
+	stderr_handle:           *Void,
+	stderr:                  *SimpleTextOutputProtocol,
+	runtime_services:        *Void, # set to *Void for now because we don't need it yet
+	boot_services:           *Void, # set to *Void for now because we don't need it yet
+	number_of_table_entries: UInt64,
+	configuration_table:     *Void  # set to *Void for now because we don't need it yet
 }
 
-fun panic(status : Status) -> ! {
+fun panic(status: Status) -> ! {
 	while true {}
 }
 
-ext "UEFI" fun efi_main(image_handle : *Void, system_table : *SystemTable) -> Status {
+ext "UEFI" fun efi_main(image_handle: *Void, system_table: *SystemTable) -> Status {
 	status UInt64
 	string []Char16 = "hello tenebre!\0"
 
