@@ -63,10 +63,14 @@ module Noon
 
     source = File.read(input_file)
     tokens = Lexer.tokenize(source)
+    puts "--- Tokens ---"
+    tokens.each do |t|
+      print "{'#{t.lexeme}'}, "
+    end
     puts "Tokenization finished."
     ast = Parser.parse(tokens)
     puts "\n--- AST ---"
-    puts "\n#{ast}"
+    puts "\n#{ast}\n"
     puts "Parsing finished."
 
     TypeChecker.check(ast)

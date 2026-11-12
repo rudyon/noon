@@ -1,6 +1,6 @@
 module Noon
   module IR
-    alias Operation = If | Then | FunctionBegin | FunctionEnd | Parameter | FFI | Call | Comparison | PushParam | PushSymbol | PushValue | PopReturn | Return
+    alias Operation = If | Then | FunctionBegin | FunctionEnd | Parameter | External | Call | Comparison | PushParam | PushSymbol | PushValue | PopReturn | Return
     alias Expression = PushSymbol | PushValue
 
     struct If
@@ -32,7 +32,7 @@ module Noon
       end
     end
 
-    struct FFI
+    struct External
       property string
 
       def initialize(@string : String)
@@ -136,8 +136,8 @@ module Noon
         case node
         when AST::Function
           nodes.concat(lower_function(node))
-        when AST::FFI
-          nodes.concat(lower_ffi(node))
+        when AST::External
+          nodes.concat(lower_ext(node))
         when AST::Call
           nodes.concat(lower_call(node))
         when AST::UInteger32
@@ -150,6 +150,13 @@ module Noon
       end
 
       nodes.push(Then.new)
+    end
+
+    def self.lower_struct(strct : AST::Struct)
+      Array(Operation)
+      nodes = [] of Operation
+
+      # TODO: implement struct lowering 
     end
 
     def self.lower_function(function : AST::Function)
@@ -167,8 +174,8 @@ module Noon
         case node
         when AST::Function
           nodes.concat(lower_function(node))
-        when AST::FFI
-          nodes.concat(lower_ffi(node))
+        when AST::External
+          nodes.concat(lower_ext(node))
         when AST::Call
           nodes.concat(lower_call(node))
         when AST::UInteger32
@@ -203,11 +210,18 @@ module Noon
       nodes
     end
 
-    def self.lower_ffi(ffi : AST::FFI)
+    def self.lower_ext(ext : AST::External)
       Array(Operation)
       nodes = [] of Operation
-      nodes.push(FFI.new(ffi.string.string))
-      nodes.concat(lower_function(ffi.function))
+      nodes.push(External.new(ext.string.string))
+
+      declare = ext.declaration
+      case declare
+      when AST::Function
+        nodes.concat(lower_function(declare))
+      when AST::Struct
+        nodes.concat(lower_struct(declare))
+      end
 
       nodes
     end
@@ -259,8 +273,8 @@ module Noon
         case node
         when AST::Function
           ir.concat(lower_function(node))
-        when AST::FFI
-          ir.concat(lower_ffi(node))
+        when AST::External
+          ir.concat(lower_ext(node))
         when AST::Call
           ir.concat(lower_call(node))
         when AST::UInteger32
@@ -298,8 +312,8 @@ module Noon
           s += "FUNCTION_END\n"
         in Parameter
           s += "PARAMETER #{op.index}\n"
-        in FFI
-          s += "FFI \"#{op.string}\"\n"
+        in External
+          s += "EXTERNAL \"#{op.string}\"\n"
         in Call
           s += "CALL #{op.name} #{op.params}\n"
         in Comparison

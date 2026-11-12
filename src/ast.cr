@@ -1,6 +1,6 @@
 module Noon
   module AST
-    alias Node = If | Type | Function | Parameter | FFI | Call | UInteger32 | NoonString | Symbol | TypeAnnotation
+    alias Node = If | Type | Function | Parameter | External | Call | UInteger32 | NoonString | Symbol | TypeAnnotation
     alias Expression = Call | UInteger32 | NoonString | Symbol
 
     struct If
@@ -13,7 +13,21 @@ module Noon
     struct Type
       property symbol, type
 
-      def initialize(@symbol : Symbol, @type : TypeAnnotation | FFI)
+      def initialize(@symbol : Symbol, @type : TypeAnnotation | External)
+      end
+    end
+
+    struct Struct
+      property symbol, properties
+
+      def initialize(@symbol : Symbol, @properties : Array(Property))
+      end
+    end
+
+    struct Property
+      property symbol, type
+
+      def initialize(@symbol : Symbol, @type : TypeAnnotation)
       end
     end
 
@@ -31,10 +45,10 @@ module Noon
       end
     end
 
-    struct FFI
-      property string, function
+    struct External
+      property string, declaration
 
-      def initialize(@string : NoonString, @function : Function)
+      def initialize(@string : NoonString, @declaration : Function | Struct)
       end
     end
 

@@ -202,7 +202,7 @@ module Noon
           else
             abort("error: compiler error")
           end
-        when IR::FFI
+        when IR::External
           abi = op.string
 
           case abi

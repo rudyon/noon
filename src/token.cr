@@ -7,7 +7,7 @@ module Noon
       True
       Struct
       Function
-      FFI
+      External
       CurlyOpen
       CurlyClose
       ParenOpen

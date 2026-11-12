@@ -21,6 +21,13 @@ module Noon
       end
     end
 
+    struct Struct
+      property properties
+
+      def initialize(@properties : Hash(String, Type::Annotation))
+      end
+    end
+
     struct Function
       property params, type
 
@@ -60,8 +67,8 @@ module Noon
         case node
         when AST::Function
           check_function(node)
-        when AST::FFI
-          check_ffi(node, env)
+        when AST::External
+          check_ext(node, env)
         when AST::Expression
           infer(node, env)
         else
@@ -114,8 +121,13 @@ module Noon
       end
     end
 
-    def self.check_ffi(ffi : AST::FFI, env : Enviroment)
-      env.push("function #{ffi.function.name}", check_function(ffi.function))
+    def self.check_ext(ext : AST::External, env : Enviroment)
+      case ext
+      when AST::Function
+        env.push("function #{ext.declaration.name}", check_function(ext.declaration))
+      when AST::Struct
+        env.push("struct #{ext.declaration.name}", check_struct(ext.declaration))
+      end
     end
 
     def self.check_function(function : AST::Function)
@@ -137,6 +149,10 @@ module Noon
       Function.new(params, inferred_type)
     end
 
+    def self.check_struct(strct : AST::Struct)
+      # TODO: implement type checking for structs
+    end
+
     def self.check(ast : Array(AST::Node))
       Type::Type
       env = Enviroment.new
@@ -145,8 +161,8 @@ module Noon
         case node
         when AST::Function
           env.push("function #{node.name}", check_function(node))
-        when AST::FFI
-          check_ffi(node, env)
+        when AST::External
+          check_ext(node, env)
         when AST::Expression
           infer(node, env)
         end

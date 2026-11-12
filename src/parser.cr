@@ -133,8 +133,8 @@ module Noon
       {string, reader}
     end
 
-    def self.parse_ffi(reader : Reader)
-      {AST::FFI, Reader}
+    def self.parse_ext(reader : Reader)
+      {AST::External, Reader}
       if reader.peek.kind == Token::Kind::DoubleQuote
         reader.consume
         string, reader = parse_string(reader)
@@ -142,14 +142,17 @@ module Noon
         abort("error: expected #{Token::Kind::DoubleQuote} but found #{reader.peek}")
       end
 
-      if reader.peek.kind == Token::Kind::Function
-        reader.consume
-        function, reader = parse_function(reader)
+      consumed = reader.consume
+      case consumed.kind
+      when Token::Kind::Function
+        declare, reader = parse_function(reader)
+      when Token::Kind::Struct
+        declare, reader = parse_struct(reader)
       else
-        abort("error: expected #{Token::Kind::Function} but found #{reader.peek}")
+        abort("error: expected #{Token::Kind::Function} or #{Token::Kind::Struct} but found #{reader.peek}")
       end
 
-      {AST::FFI.new(string, function), reader}
+      {AST::External.new(string, declare), reader}
     end
 
     def self.parse_body(reader : Reader)
@@ -213,6 +216,7 @@ module Noon
             abort("error: unexpected #{consumed}")
           end
         end
+
         reader.consume
       end
 
@@ -231,6 +235,55 @@ module Noon
       end
 
       {AST::Function.new(name, params, type, body), reader}
+    end
+
+    def self.parse_struct(reader : Reader)
+      {AST::Struct, Reader}
+      properties = [] of AST::Property
+
+      if reader.peek.kind == Token::Kind::Symbol
+        consumed = reader.consume
+        sbl, reader = parse_symbol(reader, consumed)
+
+        if sbl.is_a?(AST::Call)
+          abort("error: what?")
+        end
+      else
+        abort("error: expected symbol after struct")
+      end
+
+      if reader.peek.kind == Token::Kind::CurlyOpen
+        reader.consume
+
+        while reader.peek.kind != Token::Kind::CurlyClose
+          consumed = reader.consume
+          case consumed.kind
+          when Token::Kind::Symbol
+            prop_sbl, reader = parse_symbol(reader, consumed)
+
+            if prop_sbl.is_a?(AST::Symbol)
+              consumed = reader.consume
+              if consumed.kind != Token::Kind::Colon
+                abort("error: expected #{Token::Kind::Colon} but found #{consumed}")
+              else
+                prop_type, reader = parse_typeannotation(reader)
+              end
+
+              properties.push(AST::Property.new(prop_sbl, prop_type))
+            else
+              abort("error: unexpected #{prop_sbl}")
+            end
+          else
+            abort("error: unexpected #{consumed}")
+          end
+        end
+
+        reader.consume
+      else
+        abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek}")
+      end
+
+      {AST::Struct.new(sbl, properties), reader}
     end
 
     def self.parse_type(reader : Reader)
@@ -253,11 +306,11 @@ module Noon
         abort("error: expected an equals in type declaration")
       end
 
-      if reader.peek.kind == Token::Kind::FFI
+      if reader.peek.kind == Token::Kind::External
         reader.consume
-        ffi, reader = parse_ffi(reader)
+        ext, reader = parse_ext(reader)
 
-        {AST::Type.new(sbl, ffi), reader}
+        {AST::Type.new(sbl, ext), reader}
       elsif reader.peek.kind == Token::Kind::Symbol
         consumed = reader.consume
         type, reader = parse_typeannotation(reader)
@@ -322,8 +375,8 @@ module Noon
         when Token::Kind::Function
           node, reader = parse_function(reader)
           ast.push(node)
-        when Token::Kind::FFI
-          node, reader = parse_ffi(reader)
+        when Token::Kind::External
+          node, reader = parse_ext(reader)
           ast.push(node)
         when .expression?
           node, reader = parse_expression(reader, consumed)

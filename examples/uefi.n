@@ -1,4 +1,4 @@
-ffi "UEFI" struct TableHeader {
+ext "UEFI" struct TableHeader {
 	signature   UInt64,
 	revision    UInt32,
 	header_size UInt32,
@@ -8,49 +8,49 @@ ffi "UEFI" struct TableHeader {
 
 type Status = UInt64
 
-type TextReset = ffi "UEFI" f(
+type TextReset = ext "UEFI" fun (
 	this: *SimpleTextOutputProtocol,
 	extended_verification: Bool
 ) -> Status
 
-type TextString = ffi "UEFI" f(
+type TextString = ext "UEFI" fun (
 	this: *SimpleTextOutputProtocol,
 	string: *Char16
 ) -> Status
 
-type QueryMode = ffi "UEFI" f(
+type QueryMode = ext "UEFI" fun (
 	this: *SimpleTextOutputProtocol,
 	mode: UInt64,
 	columns: *UInt64,
 	rows: *UInt64
 ) -> Status
 
-type SetMode = ffi "UEFI" f(
+type SetMode = ext "UEFI" fun (
 	this: *SimpleTextOutputProtocol,
 	mode: UInt64
 ) -> Status
 
-type SetAttribute = ffi "UEFI" f(
+type SetAttribute = ext "UEFI" fun (
 	this: *SimpleTextOutputProtocol,
 	attribute: UInt64
 ) -> Status
 
-type ClearScreen = ffi "UEFI" f(
+type ClearScreen = ext "UEFI" fun (
 	this: *SimpleTextOutputProtocol
 ) -> Status
 
-type SetCursorPosition = ffi "UEFI" f(
+type SetCursorPosition = ext "UEFI" fun (
 	this: *SimpleTextOutputProtocol,
 	columns: UInt64,
 	rows: UInt64,
 ) -> Status
 
-type EnableCursor = ffi "UEFI" f(
+type EnableCursor = ext "UEFI" fun (
 	this: *SimpleTextOutputProtocol,
 	visible: Bool
 ) -> Status
 
-ffi "UEFI" struct SimpleTextOutputMode {
+ext "UEFI" struct SimpleTextOutputMode {
 	max_mode       Int32,
 	mode           Int32,
 	attribute      Int32,
@@ -59,7 +59,7 @@ ffi "UEFI" struct SimpleTextOutputMode {
 	cursor_visible Bool
 }
 
-ffi "UEFI" struct SimpleTextOutputProtocol {
+ext "UEFI" struct SimpleTextOutputProtocol {
 	reset TextReset,
 	output_string TextString,
 	test_string TextString,
@@ -72,7 +72,7 @@ ffi "UEFI" struct SimpleTextOutputProtocol {
 	mode *SimpleTextOutputMode,
 }
 
-ffi "UEFI" struct SystemTable {
+ext "UEFI" struct SystemTable {
 	header                  TableHeader,
 	firmware_vendor         *Char16,
 	firmware_revision       UInt32,
@@ -88,11 +88,11 @@ ffi "UEFI" struct SystemTable {
 	configuration_table     *Void  # set to *Void for now because we don't need it yet
 }
 
-f panic(status : Status) -> ! {
+fun panic(status : Status) -> ! {
 	while true {}
 }
 
-ffi "UEFI" f efi_main(image_handle : *Void, system_table : *SystemTable) -> Status {
+ext "UEFI" fun efi_main(image_handle : *Void, system_table : *SystemTable) -> Status {
 	status UInt64
 	string []Char16 = "hello tenebre!\0"
 

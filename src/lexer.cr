@@ -1,10 +1,12 @@
 module Noon
   module Lexer
     struct Scanner
-      property source, pos
+      property source, pos, row
 
       def initialize(@source : String)
         @pos = 0
+        @row = 1
+        @col = 0
       end
 
       def peek(offset = 0)
@@ -15,33 +17,64 @@ module Noon
       def look(string : String)
         {String, Bool}
         s = ""
+        failed = true
+        puts "looking for #{trace()}#{string} at #{@row}:#{@col}"
 
+        if !trace(1).whitespace?
+          failed = false
+        end
+        
         i = 0
         while i < string.size
           c = peek(i)
-          s += c
-          i += 1
+          if string[i] == c
+            s += c
+            i += 1
+          else
+            failed = true
+            break
+          end
         end
 
-        if s != string
-          {"", true}
-        elsif peek(string.size).whitespace? || eof?(string.size)
-          consume(string.size)
+        puts "located #{trace()}#{s}"
+
+        if s == string && (peek(i).whitespace? || eof?(i))
+          consume(i + 1)
+          puts "pushed #{trace(i + 1)}#{s}"
           {s, false}
-        else
+        end
+
+        if failed
           {s, true}
+        else
+          abort("error: #{loc()} #{trace()}#{s} is not a valid keyword did you mean #{trace()}#{string}?")
         end
       end
 
       def advance(steps = 1)
         @pos += steps
+        @col += steps
       end
 
-      def consume(amount = 0)
+      def consume(amount = 1)
         Char
-        c = peek(amount)
-        advance(amount + 1)
-        c
+        advance(amount)
+        trace(amount - 1)
+      end
+
+      def trace(offset = 0)
+        Char
+        peek(-(offset + 1))
+      end
+
+      def lf
+        @row += 1
+        @col = 0
+      end
+
+      def loc
+        String
+        "#{@row}:#{@col}"
       end
 
       def eof?(offset = 0)
@@ -70,7 +103,7 @@ module Noon
         s, scanner = match(scanner, ->(c : Char) { c.letter? || c == '_' || c == '!' })
         {Token::Token.new(Token::Kind::Symbol, token + s), scanner}
       else
-        abort("error: what? #{token}")
+        abort("error: #{scanner.loc()} what? #{token}")
       end
     end
 
@@ -81,57 +114,52 @@ module Noon
 
       while !scanner.eof?
         consumed = scanner.consume
+
         case consumed
         when 'i'
           s, err = scanner.look("f")
-          if !err
+          if err
             tokens.push(Token::Token.new(Token::Kind::If, "i#{s}"))
-          elsif s == ""
+          else
             t, scanner = tokenize_number_or_symbol(consumed, scanner)
             tokens.push(t)
-          else
-            abort("error: unexpected i#{s}#{scanner.peek} did you mean if?")
           end
         when 't'
           s, err = scanner.look("ype")
-          if !err
+          if err
             tokens.push(Token::Token.new(Token::Kind::Type, "t#{s}"))
-          elsif s == ""
+          else
             s, err = scanner.look("rue")
-            if !err
+            if err
               tokens.push(Token::Token.new(Token::Kind::True, "t#{s}"))
-            elsif s == ""
+            else
               t, scanner = tokenize_number_or_symbol(consumed, scanner)
               tokens.push(t)
-            else
-              abort("error: no keyword t#{s}#{scanner.peek} did you mean true?")
             end
-          else
-            abort("error: no keyword t#{s}#{scanner.peek} did you mean type?")
           end
         when 's'
           s, err = scanner.look("truct")
-          if !err
+          if err
             tokens.push(Token::Token.new(Token::Kind::Struct, "s#{s}"))
-          elsif s == ""
+          else
             t, scanner = tokenize_number_or_symbol(consumed, scanner)
             tokens.push(t)
-          else
-            abort("error: no keyword s#{s}#{scanner.peek} did you mean struct?")
           end
         when 'f'
-          if scanner.peek.whitespace? || scanner.eof?
-            tokens.push(Token::Token.new(Token::Kind::Function, "f"))
+          s, err = scanner.look("un")
+          if err
+            tokens.push(Token::Token.new(Token::Kind::Function, "f#{s}"))
           else
-            s, err = scanner.look("fi")
-            if !err
-              tokens.push(Token::Token.new(Token::Kind::FFI, "f#{s}"))
-            elsif s == ""
-              t, scanner = tokenize_number_or_symbol(consumed, scanner)
-              tokens.push(t)
-            else
-              abort("error: no keyword f#{s}#{scanner.peek} did you mean ffi?")
-            end
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
+          end
+        when 'e'
+          s, err = scanner.look("xt")
+          if err
+            tokens.push(Token::Token.new(Token::Kind::Function, "e#{s}"))
+          else
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
           end
         when '{'
           tokens.push(Token::Token.new(Token::Kind::CurlyOpen, "{"))
@@ -154,6 +182,7 @@ module Noon
         when '*'
           tokens.push(Token::Token.new(Token::Kind::Asterisk, "*"))
         when '\n'
+          scanner.lf
           tokens.push(Token::Token.new(Token::Kind::Newline, "\\n"))
         when '.'
           tokens.push(Token::Token.new(Token::Kind::Period, "."))
@@ -161,13 +190,11 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::Equals, "="))
         when '-'
           s, err = scanner.look(">")
-          if !err
+          if err
             tokens.push(Token::Token.new(Token::Kind::RArrow, "-#{s}"))
-          elsif s == ""
+          else
             t, scanner = tokenize_number_or_symbol(consumed, scanner)
             tokens.push(t)
-          else
-            abort("error: unexpected -#{s}#{scanner.peek} did you mean ->?")
           end
         when ':'
           tokens.push(Token::Token.new(Token::Kind::Colon, ":"))
@@ -177,13 +204,10 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::Hash, "#"))
         when '!'
           s, err = scanner.look("=")
-          if !err
+          if err
             tokens.push(Token::Token.new(Token::Kind::NotEquals, "!#{s}"))
-          elsif s == ""
-            t, scanner = tokenize_number_or_symbol(consumed, scanner)
-            tokens.push(t)
           else
-            abort("error: unexpected !#{s}#{scanner.peek} did you mean !=?")
+            tokens.push(Token::Token.new(Token::Kind::Bang, "!#{s}"))
           end
         when .whitespace?
           # do nothing
