@@ -77,7 +77,7 @@ ext "UEFI" struct SystemTable {
 	firmware_vendor         *Char16,
 	firmware_revision       UInt32,
 	console_in_handle       *Void,
-	con_in                  *Void, # set to *Void for now because we don't need it  yet
+	con_in                  *Void, # set to *Void for now because we don't need it yet
 	console_out_handle      *Void,
 	con_out                 *SimpleTextOutputProtocol,
 	stderr_handle           *Void,

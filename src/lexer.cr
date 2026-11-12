@@ -9,6 +9,21 @@ module Noon
         @col = 0
       end
 
+      def wrapped_in_whitespace?(string : String, consumed_starting_char : Bool)
+        Bool
+        if consumed_starting_char
+          offset = 0
+        else
+          offset = 1
+        end
+
+        if trace(offset + string.size).whitespace? && peek(string.size).whitespace?
+          true
+        else
+          false
+        end
+      end
+
       def peek(offset = 0)
         Char
         @source[@pos + offset]
@@ -29,15 +44,11 @@ module Noon
         end
 
         if s == string
-          if trace(1).whitespace? || @pos == 0
-            if peek(string.size).whitespace? || eof?(string.size)
-              consume(string.size)
-              {s, false}
-            else
-              {s, true}
-            end
+          if wrapped_in_whitespace?(string, true)
+            consume(string.size)
+            {s, false}
           else
-            abort("error: #{loc()} #{trace()}#{s} is not a valid keyword did you mean #{trace()}#{string}?")
+            {s, true}
           end
         else
           {s, true}
