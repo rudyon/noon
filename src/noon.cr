@@ -63,21 +63,24 @@ module Noon
 
     source = File.read(input_file)
     tokens = Lexer.tokenize(source)
-    puts "success: lexer passes"
+    puts "Tokenization finished."
     ast = Parser.parse(tokens)
-    puts "success: parses passes"
+    puts "\n--- AST ---"
+    puts "\n#{ast}"
+    puts "Parsing finished."
 
     TypeChecker.check(ast)
-    puts "success: type checker passes"
+    puts "Type checks passed."
 
     ir = IR.lower(ast)
-    puts "success: lowerer passes"
+    puts "\n--- IR ---"
+    puts "\n#{IR.to_s(ir)}"
 
     if emit_ir
       File.write(output_file, IR.to_s(ir))
     else
       bin = Backend.compile(target_triple, ir)
-      puts "success: compiler passes"
+      puts "Compilation completed."
       File.write(output_file, bin, perm: 0o755)
     end
   end

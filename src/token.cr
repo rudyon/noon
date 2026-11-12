@@ -14,10 +14,12 @@ module Noon
       ParenClose
       BracketOpen
       BracketClose
+      SingleQuote
       DoubleQuote
       Backslash
       Asterisk
       Newline
+      Period
       Equals
       RArrow
       Colon

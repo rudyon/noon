@@ -253,14 +253,19 @@ module Noon
         abort("error: expected an equals in type declaration")
       end
 
-      if reader.peek.kind == Token::Kind::Symbol
+      if reader.peek.kind == Token::Kind::FFI
+        reader.consume
+        ffi, reader = parse_ffi(reader)
+
+        {AST::Type.new(sbl, ffi), reader}
+      elsif reader.peek.kind == Token::Kind::Symbol
         consumed = reader.consume
         type, reader = parse_typeannotation(reader)
+
+        {AST::Type.new(sbl, type), reader}
       else
         abort("error: expected symbol after equals in type declaration")
       end
-
-      {AST::Type.new(sbl, type), reader}
     end
 
     def self.parse_if(reader : Reader)

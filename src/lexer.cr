@@ -19,16 +19,14 @@ module Noon
         i = 0
         while i < string.size
           c = peek(i)
-          if string[i] != c
-            {s, true}
-          else
-            i += 1
-          end
+          s += c
+          i += 1
         end
 
-        consume(string.size)
-
-        if peek().whitespace? || eof?()
+        if s != string
+          {"", true}
+        elsif peek(string.size).whitespace? || eof?(string.size)
+          consume(string.size)
           {s, false}
         else
           {s, true}
@@ -46,8 +44,8 @@ module Noon
         c
       end
 
-      def eof?
-        @pos >= @source.size
+      def eof?(offset = 0)
+        @pos + offset >= @source.size
       end
     end
 
@@ -60,6 +58,20 @@ module Noon
       end
 
       {s.join, scanner}
+    end
+
+    def self.tokenize_number_or_symbol(token : Char, scanner : Scanner)
+      {Token::Token, Scanner}
+      case token
+      when .number?
+        n, scanner = match(scanner, ->(c : Char) { c.number? })
+        {Token::Token.new(Token::Kind::Number, token + n), scanner}
+      when .letter?, '_', '!'
+        s, scanner = match(scanner, ->(c : Char) { c.letter? || c == '_' || c == '!' })
+        {Token::Token.new(Token::Kind::Symbol, token + s), scanner}
+      else
+        abort("error: what? #{token}")
+      end
     end
 
     def self.tokenize(source : String)
@@ -75,36 +87,40 @@ module Noon
           if !err
             tokens.push(Token::Token.new(Token::Kind::If, "i#{s}"))
           elsif s == ""
-            break
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
           else
-            abort("error: unexpected i#{s} did you mean if?")
+            abort("error: unexpected i#{s}#{scanner.peek} did you mean if?")
           end
         when 't'
           s, err = scanner.look("ype")
           if !err
             tokens.push(Token::Token.new(Token::Kind::Type, "t#{s}"))
           elsif s == ""
-            # continue
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
           else
-            abort("error: no keyword t#{s} did you mean type?")
+            abort("error: no keyword t#{s}#{scanner.peek} did you mean type?")
           end
 
           s, err = scanner.look("rue")
           if !err
             tokens.push(Token::Token.new(Token::Kind::True, "t#{s}"))
           elsif s == ""
-            break
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
           else
-            abort("error: no keyword t#{s} did you mean true?")
+            abort("error: no keyword t#{s}#{scanner.peek} did you mean true?")
           end
         when 's'
           s, err = scanner.look("truct")
           if !err
             tokens.push(Token::Token.new(Token::Kind::Struct, "s#{s}"))
           elsif s == ""
-            break
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
           else
-            abort("error: no keyword s#{s} did you mean struct?")
+            abort("error: no keyword s#{s}#{scanner.peek} did you mean struct?")
           end
         when 'f'
           if scanner.peek.whitespace? || scanner.eof?
@@ -114,9 +130,10 @@ module Noon
             if !err
               tokens.push(Token::Token.new(Token::Kind::FFI, "f#{s}"))
             elsif s == ""
-              break
+              t, scanner = tokenize_number_or_symbol(consumed, scanner)
+              tokens.push(t)
             else
-              abort("error: no keyword f#{s} did you mean ffi?")
+              abort("error: no keyword f#{s}#{scanner.peek} did you mean ffi?")
             end
           end
         when '{'
@@ -131,6 +148,8 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::BracketOpen, "["))
         when ']'
           tokens.push(Token::Token.new(Token::Kind::BracketClose, "]"))
+        when '\''
+          tokens.push(Token::Token.new(Token::Kind::SingleQuote, "\'"))
         when '"'
           tokens.push(Token::Token.new(Token::Kind::DoubleQuote, "\""))
         when '\\'
@@ -139,6 +158,8 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::Asterisk, "*"))
         when '\n'
           tokens.push(Token::Token.new(Token::Kind::Newline, "\\n"))
+        when '.'
+          tokens.push(Token::Token.new(Token::Kind::Period, "."))
         when '='
           tokens.push(Token::Token.new(Token::Kind::Equals, "="))
         when '-'
@@ -146,9 +167,10 @@ module Noon
           if !err
             tokens.push(Token::Token.new(Token::Kind::RArrow, "-#{s}"))
           elsif s == ""
-            break
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
           else
-            abort("error: unexpected -#{s} did you mean ->?")
+            abort("error: unexpected -#{s}#{scanner.peek} did you mean ->?")
           end
         when ':'
           tokens.push(Token::Token.new(Token::Kind::Colon, ":"))
@@ -161,16 +183,16 @@ module Noon
           if !err
             tokens.push(Token::Token.new(Token::Kind::NotEquals, "!#{s}"))
           elsif s == ""
-            break
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
           else
-            abort("error: unexpected !#{s} did you mean !=?")
+            abort("error: unexpected !#{s}#{scanner.peek} did you mean !=?")
           end
-        when .number?
-          matched, scanner = Lexer.match(scanner, ->(c : Char) { c.number? })
-          tokens.push(Token::Token.new(Token::Kind::Number, consumed + matched))
-        when .letter?
-          matched, scanner = Lexer.match(scanner, ->(c : Char) { c.letter? || c == '_' })
-          tokens.push(Token::Token.new(Token::Kind::Symbol, consumed + matched))
+        when .whitespace?
+          # do nothing
+        else
+          t, scanner = tokenize_number_or_symbol(consumed, scanner)
+          tokens.push(t)
         end
       end
       tokens.push(Token::Token.new(Token::Kind::EOF, ""))

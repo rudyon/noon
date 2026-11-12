@@ -13,7 +13,7 @@ module Noon
     struct Type
       property symbol, type
 
-      def initialize(@symbol : Symbol, @type : TypeAnnotation)
+      def initialize(@symbol : Symbol, @type : TypeAnnotation | FFI)
       end
     end
 
