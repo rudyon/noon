@@ -17,37 +17,33 @@ module Noon
       def look(string : String)
         {String, Bool}
         s = ""
-        failed = true
         puts "looking for #{trace()}#{string} at #{@row}:#{@col}"
 
-        if !trace(1).whitespace?
-          failed = false
-        end
-        
         i = 0
         while i < string.size
-          c = peek(i)
-          if string[i] == c
-            s += c
-            i += 1
-          else
-            failed = true
+          if peek(i).whitespace?
             break
           end
+
+          s += peek(i)
+          i += 1
         end
 
         puts "located #{trace()}#{s}"
 
-        if s == string && (peek(i).whitespace? || eof?(i))
-          consume(i + 1)
-          puts "pushed #{trace(i + 1)}#{s}"
-          {s, false}
-        end
-
-        if failed
-          {s, true}
+        if s == string
+          if trace(1).whitespace? || @pos == 0
+            if peek(string.size).whitespace? || eof?(string.size)
+              consume(string.size)
+              {s, false}
+            else
+              {s, true}
+            end
+          else
+            abort("error: #{loc()} #{trace()}#{s} is not a valid keyword did you mean #{trace()}#{string}?")
+          end
         else
-          abort("error: #{loc()} #{trace()}#{s} is not a valid keyword did you mean #{trace()}#{string}?")
+          {s, true}
         end
       end
 
@@ -99,11 +95,11 @@ module Noon
       when .number?
         n, scanner = match(scanner, ->(c : Char) { c.number? })
         {Token::Token.new(Token::Kind::Number, token + n), scanner}
-      when .letter?, '_', '!'
-        s, scanner = match(scanner, ->(c : Char) { c.letter? || c == '_' || c == '!' })
+      when .letter?, '_', '!', '-'
+        s, scanner = match(scanner, ->(c : Char) { c.letter? || c == '_' || c == '!' || c == '-' })
         {Token::Token.new(Token::Kind::Symbol, token + s), scanner}
       else
-        abort("error: #{scanner.loc()} what? #{token}")
+        abort("error: #{scanner.loc} unrecognized character #{token}")
       end
     end
 
@@ -118,7 +114,7 @@ module Noon
         case consumed
         when 'i'
           s, err = scanner.look("f")
-          if err
+          if !err
             tokens.push(Token::Token.new(Token::Kind::If, "i#{s}"))
           else
             t, scanner = tokenize_number_or_symbol(consumed, scanner)
@@ -126,11 +122,11 @@ module Noon
           end
         when 't'
           s, err = scanner.look("ype")
-          if err
+          if !err
             tokens.push(Token::Token.new(Token::Kind::Type, "t#{s}"))
           else
             s, err = scanner.look("rue")
-            if err
+            if !err
               tokens.push(Token::Token.new(Token::Kind::True, "t#{s}"))
             else
               t, scanner = tokenize_number_or_symbol(consumed, scanner)
@@ -139,7 +135,7 @@ module Noon
           end
         when 's'
           s, err = scanner.look("truct")
-          if err
+          if !err
             tokens.push(Token::Token.new(Token::Kind::Struct, "s#{s}"))
           else
             t, scanner = tokenize_number_or_symbol(consumed, scanner)
@@ -147,7 +143,7 @@ module Noon
           end
         when 'f'
           s, err = scanner.look("un")
-          if err
+          if !err
             tokens.push(Token::Token.new(Token::Kind::Function, "f#{s}"))
           else
             t, scanner = tokenize_number_or_symbol(consumed, scanner)
@@ -155,8 +151,8 @@ module Noon
           end
         when 'e'
           s, err = scanner.look("xt")
-          if err
-            tokens.push(Token::Token.new(Token::Kind::Function, "e#{s}"))
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::External, "e#{s}"))
           else
             t, scanner = tokenize_number_or_symbol(consumed, scanner)
             tokens.push(t)
@@ -186,16 +182,20 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::Newline, "\\n"))
         when '.'
           tokens.push(Token::Token.new(Token::Kind::Period, "."))
+        when '-'
+          if scanner.peek.whitespace? || scanner.eof?
+            tokens.push(Token::Token.new(Token::Kind::Minus, "-"))
+          else
+            s, err = scanner.look(">")
+            if !err
+              tokens.push(Token::Token.new(Token::Kind::RArrow, "-#{s}"))
+            else
+              t, scanner = tokenize_number_or_symbol(consumed, scanner)
+              tokens.push(t)
+            end
+          end
         when '='
           tokens.push(Token::Token.new(Token::Kind::Equals, "="))
-        when '-'
-          s, err = scanner.look(">")
-          if err
-            tokens.push(Token::Token.new(Token::Kind::RArrow, "-#{s}"))
-          else
-            t, scanner = tokenize_number_or_symbol(consumed, scanner)
-            tokens.push(t)
-          end
         when ':'
           tokens.push(Token::Token.new(Token::Kind::Colon, ":"))
         when ','
@@ -204,7 +204,7 @@ module Noon
           tokens.push(Token::Token.new(Token::Kind::Hash, "#"))
         when '!'
           s, err = scanner.look("=")
-          if err
+          if !err
             tokens.push(Token::Token.new(Token::Kind::NotEquals, "!#{s}"))
           else
             tokens.push(Token::Token.new(Token::Kind::Bang, "!#{s}"))

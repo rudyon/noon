@@ -9,6 +9,21 @@ require "./ir"
 require "./backend"
 
 module Noon
+  def self.debug(output : Array(Token::Token))
+    puts "\n--- Tokens ---\n\n"
+    output.each do |t|
+      if t.kind == Token::Kind::EOF
+        print "EOF"
+      else
+        print "'#{t.lexeme}', "
+        if t.lexeme == "\\n"
+          print "\n"
+        end
+      end
+    end
+    print "\n\n"
+  end
+
   def self.main
     emit_ir = false
     output_file = ""
@@ -63,22 +78,16 @@ module Noon
 
     source = File.read(input_file)
     tokens = Lexer.tokenize(source)
-    puts "--- Tokens ---"
-    tokens.each do |t|
-      print "{'#{t.lexeme}'}, "
-    end
     puts "Tokenization finished."
+    debug(tokens)
     ast = Parser.parse(tokens)
-    puts "\n--- AST ---"
-    puts "\n#{ast}\n"
     puts "Parsing finished."
 
     TypeChecker.check(ast)
     puts "Type checks passed."
 
     ir = IR.lower(ast)
-    puts "\n--- IR ---"
-    puts "\n#{IR.to_s(ir)}"
+    puts "Lowering finished."
 
     if emit_ir
       File.write(output_file, IR.to_s(ir))

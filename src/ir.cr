@@ -156,7 +156,7 @@ module Noon
       Array(Operation)
       nodes = [] of Operation
 
-      # TODO: implement struct lowering 
+      # TODO: implement struct lowering
     end
 
     def self.lower_function(function : AST::Function)

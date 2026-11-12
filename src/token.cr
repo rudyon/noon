@@ -22,6 +22,7 @@ module Noon
       Period
       Equals
       RArrow
+      Minus
       Colon
       Comma
       Hash
