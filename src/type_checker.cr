@@ -44,6 +44,8 @@ module Noon
         type = check_if(expr, env)
       in AST::Call
         type = check_call(expr, env)
+      in AST::Access
+        type = check_access(expr, env)
       in AST::Condition
         check_condition(expr, env)
         type = Type::Annotation::Bool
@@ -78,6 +80,7 @@ module Noon
     end
 
     def self.check_if(if_node : AST::If, env : Enviroment)
+      # TODO: implement type checking for ifs
     end
 
     def self.check_call(call : AST::Call, env : Enviroment)
@@ -119,6 +122,10 @@ module Noon
       elsif left_type != Bool
         abort("error: can't use #{left_type} in comparison")
       end
+    end
+
+    def self.check_access(access : AST::Access, env : Enviroment)
+      # TODO: implement type checking for accesses
     end
 
     def self.check_ext(ext : AST::External, env : Enviroment)

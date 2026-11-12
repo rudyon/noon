@@ -1,6 +1,6 @@
 module Noon
   module IR
-    alias Operation = If | Then | FunctionBegin | FunctionEnd | Parameter | External | Call | Comparison | PushParam | PushSymbol | PushValue | PopReturn | Return
+    alias Operation = If | Then | FunctionBegin | FunctionEnd | Parameter | External | Call | Comparison | Access | PushParam | PushSymbol | PushValue | PopReturn | Return
     alias Expression = PushSymbol | PushValue
 
     struct If
@@ -53,6 +53,11 @@ module Noon
       end
     end
 
+    struct Access # placeholder
+      def initialize
+      end
+    end
+
     struct PushParam
       property index
 
@@ -87,6 +92,12 @@ module Noon
     def self.lower_comp(comp : AST::Comparison)
       Operation
       Comparison.new(comp.comparison)
+    end
+
+    def self.lower_access(access : AST::Access)
+      Operation
+      Access.new # placeholder
+      # TODO: implement lowering for accesses
     end
 
     def self.lower_cond(cond : AST::Condition)
@@ -238,6 +249,8 @@ module Noon
           nodes.concat(lower_call(arg))
         in AST::Condition
           nodes.concat(lower_cond(arg))
+        in AST::Access
+          nodes.push(lower_access(arg))
         in AST::UInteger32
           nodes.push(lower_uint32(arg))
         in AST::NoonString
@@ -318,6 +331,8 @@ module Noon
           s += "CALL #{op.name} #{op.params}\n"
         in Comparison
           s += "#{op.comparison.lexeme}\n"
+        in Access
+          s += "!!! PLEASE IMPLEMENT ACCESS LOWERING !!!\n"
         in PushParam
           s += "PUSH_PARAMETER #{op.index}\n"
         in PushSymbol

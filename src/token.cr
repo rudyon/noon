@@ -25,7 +25,6 @@ module Noon
       Minus
       Colon
       Comma
-      Hash
       Bang
       Number
       Symbol

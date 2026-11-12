@@ -8,11 +8,17 @@ module Noon
       UInt32
       UInt64
       Char8
+      Never
+      Pointer
+      Derived
       ArrayofNil
       ArrayofBool
       ArrayofUInt32
       ArrayofUInt64
       ArrayofChar8
+      ArrayofNever
+      ArrayofPointer
+      ArrayofDervied
     end
 
     struct NoonNil
@@ -45,6 +51,18 @@ module Noon
       property char
 
       def initialize(@char : Char)
+      end
+    end
+
+    struct NoonNever
+      def initialize
+      end
+    end
+
+    struct NoonPointer
+      property pointer
+
+      def initialize(@pointer : Pointer)
       end
     end
   end

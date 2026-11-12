@@ -30,9 +30,11 @@ module Noon
 
     def self.parse_typeannotation(reader : Reader)
       {AST::TypeAnnotation, Reader}
+      extra = nil
 
       consumed = reader.consume
-      if consumed.kind == Token::Kind::Symbol
+      case consumed.kind
+      when Token::Kind::Symbol
         case consumed.lexeme
         when "Bool"
           type = Type::Annotation::Bool
@@ -41,19 +43,32 @@ module Noon
         when "UInt64"
           type = Type::Annotation::UInt64
         else
-          abort("error: #{consumed.lexeme} is not a valid type")
+          type = Type::Annotation::Derived
+          sbl, reader = parse_symbol(reader, consumed)
+          if sbl.is_a?(AST::Symbol)
+            extra = sbl
+          end
         end
+      when Token::Kind::Asterisk
+        type = Type::Annotation::Pointer
+        consumed = reader.consume
+        sbl, reader = parse_symbol(reader, consumed)
+        if sbl.is_a?(AST::Symbol)
+          extra = sbl
+        end
+      when Token::Kind::Bang
+        type = Type::Annotation::Never
       else
         abort("error: unexpected type annotation #{consumed.kind}")
       end
 
-      {AST::TypeAnnotation.new(type), reader}
+      {AST::TypeAnnotation.new(type, extra), reader}
     end
 
     def self.parse_expression(reader : Reader, token : Token::Token)
       {AST::Expression, Reader}
 
-      case token
+      case token.kind
       when Token::Kind::DoubleQuote
         node, reader = parse_string(reader)
         {node, reader}
@@ -64,12 +79,12 @@ module Noon
         node = parse_number(token)
         {node, reader}
       else
-        abort("unexpected #{token}")
+        abort("unexpected expression #{token}")
       end
     end
 
     def self.parse_symbol(reader : Reader, token : Token::Token)
-      {AST::Symbol | AST::Call, Reader}
+      {AST::Symbol | AST::Call | AST::Access, Reader}
 
       if reader.peek.kind == Token::Kind::ParenOpen
         reader.consume
@@ -88,13 +103,39 @@ module Noon
           when Token::Kind::Symbol
             sbl, reader = parse_symbol(reader, consumed)
             args.push(sbl)
+          when Token::Kind::Comma
+            consumed = reader.consume
+            sbl, reader = parse_symbol(reader, consumed)
+            args.push(sbl)
           else
-            abort("error: unexpected #{consumed.kind}")
+            abort("error: unexpected symbol #{consumed.kind}")
           end
         end
         reader.consume
 
         {AST::Call.new(token.lexeme, args), reader}
+      elsif reader.peek.kind == Token::Kind::Period
+        accessed = AST::Symbol.new(token.lexeme)
+        accesses = [] of AST::Symbol | AST::Call
+
+        while reader.peek.kind == Token::Kind::Period
+          reader.consume
+          consumed = reader.consume
+
+          if consumed.kind == Token::Kind::Symbol && reader.peek.kind != Token::Kind::ParenOpen
+            accesses.push(AST::Symbol.new(consumed.lexeme))
+          else
+            call, reader = parse_symbol(reader, consumed)
+
+            if call.is_a?(AST::Access)
+              abort("error: what?")
+            end
+
+            accesses.push(call)
+          end
+        end
+
+        {AST::Access.new(accessed, accesses), reader}
       else
         {AST::Symbol.new(token.lexeme), reader}
       end
@@ -131,6 +172,29 @@ module Noon
       {string, reader}
     end
 
+    def self.parse_ext_function(reader : Reader)
+      {AST::ExternalFunction, Reader}
+      params = [] of AST::Parameter
+      type = AST::TypeAnnotation.new(Type::Annotation::Nil)
+
+      while reader.peek.kind != Token::Kind::ParenClose
+        consumed = reader.consume
+        case consumed.kind
+        when Token::Kind::ParenOpen
+          params, reader = parse_function_params(reader)
+        when Token::Kind::RArrow
+          type, reader = parse_typeannotation(reader)
+        when .whitespace?
+          next
+        else
+          abort("error: expected ParenOpen but got #{consumed.kind}")
+        end
+      end
+      reader.consume
+
+      {AST::ExternalFunction.new(params, type), reader}
+    end
+
     def self.parse_ext(reader : Reader)
       {AST::External, Reader}
       if reader.peek.kind == Token::Kind::DoubleQuote
@@ -144,7 +208,13 @@ module Noon
       consumed = reader.consume
       case consumed.kind
       when Token::Kind::Function
-        declare, reader = parse_function(reader)
+        if reader.peek.kind == Token::Kind::Symbol
+          declare, reader = parse_function(reader)
+        elsif reader.peek.kind == Token::Kind::ParenOpen
+          declare, reader = parse_ext_function(reader)
+        else
+          abort("error: expected some kind of function declaration")
+        end
       when Token::Kind::Struct
         declare, reader = parse_struct(reader)
       else
@@ -171,13 +241,48 @@ module Noon
           when AST::Symbol
             body.push(sbl)
           when AST::Call
-            abort("error: function calls inside bodies are not supported yet") # TODO
+            # TODO: functions call inside function bodies are not supported yet
           end
         end
       end
       reader.consume
 
       {body, reader}
+    end
+
+    def self.parse_function_params(reader : Reader)
+      {Array(AST::Parameter), Reader}
+      params = [] of AST::Parameter
+
+      while reader.peek.kind != Token::Kind::ParenClose
+        consumed = reader.consume
+        case consumed.kind
+        when Token::Kind::Symbol
+          param_sbl, reader = parse_symbol(reader, consumed)
+
+          if param_sbl.is_a?(AST::Symbol)
+            consumed = reader.consume
+            if consumed.kind != Token::Kind::Colon
+              abort("error: expected #{Token::Kind::Colon} but found #{consumed.kind}")
+            else
+              param_type, reader = parse_typeannotation(reader)
+            end
+
+            if reader.peek.kind == Token::Kind::Comma
+              reader.consume
+              params.push(AST::Parameter.new(param_sbl, param_type))
+            end
+          else
+            abort("error: unexpected function param 1 #{param_sbl}")
+          end
+        when .whitespace?
+          next
+        else
+          abort("error: unexpected function param 2 #{consumed.kind}")
+        end
+      end
+
+      {params, reader}
     end
 
     def self.parse_function(reader : Reader)
@@ -192,30 +297,7 @@ module Noon
 
       if reader.peek.kind == Token::Kind::ParenOpen
         reader.consume
-
-        while reader.peek.kind != Token::Kind::ParenClose
-          consumed = reader.consume
-          case consumed.kind
-          when Token::Kind::Symbol
-            param_sbl, reader = parse_symbol(reader, consumed)
-
-            if param_sbl.is_a?(AST::Symbol)
-              consumed = reader.consume
-              if consumed.kind != Token::Kind::Colon
-                abort("error: expected #{Token::Kind::Colon} but found #{consumed.kind}")
-              else
-                param_type, reader = parse_typeannotation(reader)
-              end
-
-              params.push(AST::Parameter.new(param_sbl, param_type))
-            else
-              abort("error: unexpected #{param_sbl}")
-            end
-          else
-            abort("error: unexpected #{consumed.kind}")
-          end
-        end
-
+        params, reader = parse_function_params(reader)
         reader.consume
       end
 
@@ -245,6 +327,10 @@ module Noon
         sbl, reader = parse_symbol(reader, consumed)
 
         if sbl.is_a?(AST::Call)
+          abort("error: what?")
+        end
+
+        if sbl.is_a?(AST::Access)
           abort("error: what?")
         end
       else
@@ -278,7 +364,7 @@ module Noon
           when .whitespace?
             next
           else
-            abort("error: unexpected #{consumed.kind}")
+            abort("error: unexpected struct #{consumed.kind}")
           end
         end
 
@@ -298,6 +384,10 @@ module Noon
         sbl, reader = parse_symbol(reader, consumed)
 
         if sbl.is_a?(AST::Call)
+          abort("error: what?")
+        end
+
+        if sbl.is_a?(AST::Access)
           abort("error: what?")
         end
       else

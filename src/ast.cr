@@ -1,7 +1,7 @@
 module Noon
   module AST
-    alias Node = If | Type | Function | Parameter | External | Call | UInteger32 | NoonString | Symbol | TypeAnnotation
-    alias Expression = Call | UInteger32 | NoonString | Symbol
+    alias Node = If | Type | Function | Parameter | External | Call | Access | UInteger32 | NoonString | Symbol | TypeAnnotation
+    alias Expression = Call | Access | UInteger32 | NoonString | Symbol
 
     struct If
       property condition, body
@@ -48,7 +48,14 @@ module Noon
     struct External
       property string, declaration
 
-      def initialize(@string : NoonString, @declaration : Function | Struct)
+      def initialize(@string : NoonString, @declaration : Function | Struct | ExternalFunction)
+      end
+    end
+
+    struct ExternalFunction
+      property params, type
+
+      def initialize(@params : Array(Parameter), @tpe : TypeAnnotation)
       end
     end
 
@@ -63,6 +70,13 @@ module Noon
       property left, comparison, right
 
       def initialize(@left : Expression, @comparison : Comparison? = nil, @right : Expression? = nil)
+      end
+    end
+
+    struct Access
+      property accessed, accessor
+
+      def initialize(@accessed : Symbol, @accessor : Array(Symbol | Call))
       end
     end
 
@@ -95,9 +109,9 @@ module Noon
     end
 
     struct TypeAnnotation
-      property type
+      property type, extra
 
-      def initialize(@type : Noon::Type::Annotation)
+      def initialize(@type : Noon::Type::Annotation, @extra : AST::Symbol? = nil)
       end
     end
   end

@@ -69,7 +69,7 @@ ext "UEFI" struct SimpleTextOutputProtocol {
 	clear_screen:        ClearScreen,
 	set_cursor_position: SetCursorPosition,
 	enable_cursor:       EnableCursor,
-	mode:               *SimpleTextOutputMode
+	mode:                *SimpleTextOutputMode
 }
 
 ext "UEFI" struct SystemTable {

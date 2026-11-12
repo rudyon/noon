@@ -110,11 +110,21 @@ module Noon
         n, scanner = match(scanner, ->(c : Char) { c.number? })
         {Token::Token.new(Token::Kind::Number, token + n), scanner}
       when .letter?, .number?, '_', '!', '-'
-        s, scanner = match(scanner, ->(c : Char) { c.letter?  || c.number? || c == '_' || c == '!' || c == '-' })
+        s, scanner = match(scanner, ->(c : Char) { c.letter? || c.number? || c == '_' || c == '!' || c == '-' })
         {Token::Token.new(Token::Kind::Symbol, token + s), scanner}
       else
         abort("error: #{scanner.loc} unrecognized character #{token}")
       end
+    end
+
+    def self.skip_until_lf(scanner : Scanner)
+      Scanner
+
+      while scanner.peek != '\n'
+        scanner.consume
+      end
+
+      scanner
     end
 
     def self.tokenize(source : String)
@@ -215,7 +225,7 @@ module Noon
         when ','
           tokens.push(Token::Token.new(Token::Kind::Comma, ","))
         when '#'
-          tokens.push(Token::Token.new(Token::Kind::Hash, "#"))
+          scanner = skip_until_lf(scanner)
         when '!'
           s, err = scanner.look("=")
           if !err
