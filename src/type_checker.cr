@@ -55,6 +55,8 @@ module Noon
       in AST::NoonString
         type = Type::Annotation::Array
         extra = Type::Annotation::Char8
+      in AST::NoonBool
+        type = Type::Annotation::Bool
       in AST::Symbol
         type = env.get("symbol #{expr.name}")
       end

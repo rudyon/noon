@@ -2,12 +2,12 @@ module Noon
   module AST
     alias Node = Expression | Value | ParseSymbolReturn | Keyword | PropertyParameter | ConditionComparison | TypeAnnotation
     alias PropertyParameter = Property | Parameter
-    alias Keyword = If | Type | Struct | Function | External | ExternalFunction
+    alias Keyword = If | Type | Struct | Function | External | ExternalFunction | While
     alias ConditionComparison = Condition | Comparison
     alias Expression = CallAccessSymbol | Value
-    alias ParseSymbolReturn = VariableTypeAnnotation | VariableDeclaration | ConstantDeclaration | CallAccessSymbol
+    alias ParseSymbolReturn = VariableTypeAnnotation | VariableDeclaration | VariableSetting | ConstantDeclaration | CallAccessSymbol
     alias CallAccessSymbol = Call | Access | Symbol
-    alias Value = Number | NoonString
+    alias Value = Number | NoonString | NoonBool
 
     struct If
       property condition, body
@@ -20,6 +20,13 @@ module Noon
       property symbol, type
 
       def initialize(@symbol : Symbol, @type : TypeAnnotation | External)
+      end
+    end
+
+    struct NoonBool
+      property value
+
+      def initialize(@value : Bool)
       end
     end
 
@@ -65,6 +72,13 @@ module Noon
       end
     end
 
+    struct While
+      property condition, body
+
+      def initialize(@condition : Condition, @body : Array(Node))
+      end
+    end
+
     struct VariableTypeAnnotation
       property name, type
 
@@ -75,21 +89,21 @@ module Noon
     struct VariableDeclaration
       property name, type, value
 
-      def initialize(@name : String, @type : TypeAnnotation, @value : Number | NoonString)
+      def initialize(@name : String, @type : TypeAnnotation, @value : Value)
       end
     end
 
     struct VariableSetting
       property name, value
 
-      def initialize(@name : String, @value : Number | NoonString)
+      def initialize(@name : String, @value : Value)
       end
     end
 
     struct ConstantDeclaration
       property name, type, value
 
-      def initialize(@name : String, @type : TypeAnnotation, @value : Number | NoonString)
+      def initialize(@name : String, @type : TypeAnnotation, @value : Value)
       end
     end
 

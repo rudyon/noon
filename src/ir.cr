@@ -75,7 +75,7 @@ module Noon
     struct PushValue
       property value
 
-      def initialize(@value : UInt32 | String)
+      def initialize(@value : UInt32)
       end
     end
 
@@ -193,6 +193,8 @@ module Noon
           nodes.push(lower_number(node))
         when AST::NoonString
           nodes.push(lower_string(node))
+        when AST::NoonBool
+          # TODO: implement boolean lowering
         when AST::Symbol
           sbl = lower_symbol(node)
 
@@ -255,6 +257,8 @@ module Noon
           nodes.push(lower_number(arg))
         in AST::NoonString
           nodes.push(lower_string(arg))
+        in AST::NoonBool
+          # TODO: implement boolean lowering
         in AST::Symbol
           nodes.push(lower_symbol(arg))
         end
@@ -263,14 +267,15 @@ module Noon
       nodes.push(Call.new(call.name, call.args.size))
     end
 
-    def self.lower_number(number : AST::Number)
+    def self.lower_number(number : AST::Number | AST::NoonBool)
       Operation
       PushValue.new(number.value)
     end
 
     def self.lower_string(string : AST::NoonString)
       Operation
-      PushValue.new(string.string)
+      # TODO: implement string lowering with arrays
+      PushValue.new(0) # placeholder
     end
 
     def self.lower_symbol(sbl : AST::Symbol)

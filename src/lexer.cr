@@ -9,7 +9,7 @@ module Noon
         @col = 0
       end
 
-      def wrapped_in_whitespace?(string : String, consumed_starting_char : Bool, accept_file_start : Bool)
+      def wrapped_in_whitespace?(string : String, consumed_starting_char : Bool, accept_file_start : Bool, ends_in_whitespace : Bool = true)
         Bool
         if consumed_starting_char
           offset = 0
@@ -23,7 +23,13 @@ module Noon
           condition = true
         end
 
-        if (trace(offset + 1).whitespace? || condition) && peek(string.size).whitespace?
+        if ends_in_whitespace
+          ending = peek(string.size).whitespace?
+        else
+          ending = true
+        end
+
+        if (trace(offset + 1).whitespace? || condition) && ending
           true
         else
           false
@@ -35,7 +41,7 @@ module Noon
         @source[@pos + offset]
       end
 
-      def look(string : String)
+      def look(string : String, ends_in_whitespace : Bool = true)
         {String, Bool}
         s = ""
 
@@ -50,7 +56,7 @@ module Noon
         end
 
         if s == string
-          if wrapped_in_whitespace?(string, true, true)
+          if wrapped_in_whitespace?(string, true, true, ends_in_whitespace)
             consume(string.size)
             {s, false}
           else
@@ -101,6 +107,18 @@ module Noon
       end
 
       {s.join, scanner}
+    end
+
+    def self.tokenize_string(scanner : Scanner)
+      {Token::Token, Scanner}
+      s = ""
+
+      while scanner.peek != '"'
+        s += scanner.consume
+      end
+      scanner.consume
+
+      {Token::Token.new(Token::Kind::String, s), scanner}
     end
 
     def self.tokenize_number_or_symbol(token : Char, scanner : Scanner)
@@ -170,8 +188,13 @@ module Noon
           if !err
             tokens.push(Token::Token.new(Token::Kind::Function, "f#{s}"))
           else
-            t, scanner = tokenize_number_or_symbol(consumed, scanner)
-            tokens.push(t)
+            s, err = scanner.look("alse")
+            if !err
+              tokens.push(Token::Token.new(Token::Kind::False, "f#{s}"))
+            else
+              t, scanner = tokenize_number_or_symbol(consumed, scanner)
+              tokens.push(t)
+            end
           end
         when 'c'
           s, err = scanner.look("nst")
@@ -189,6 +212,14 @@ module Noon
             t, scanner = tokenize_number_or_symbol(consumed, scanner)
             tokens.push(t)
           end
+        when 'w'
+          s, err = scanner.look("hile")
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::While, "w#{s}"))
+          else
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
+          end
         when '{'
           tokens.push(Token::Token.new(Token::Kind::CurlyOpen, "{"))
         when '}'
@@ -198,13 +229,18 @@ module Noon
         when ')'
           tokens.push(Token::Token.new(Token::Kind::ParenClose, ")"))
         when '['
-          tokens.push(Token::Token.new(Token::Kind::BracketOpen, "["))
-        when ']'
-          tokens.push(Token::Token.new(Token::Kind::BracketClose, "]"))
+          s, err = scanner.look("]", false)
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::ArrayEmpty, "[#{s}"))
+          else
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
+          end
         when '\''
           tokens.push(Token::Token.new(Token::Kind::SingleQuote, "'"))
         when '"'
-          tokens.push(Token::Token.new(Token::Kind::DoubleQuote, "\""))
+          t, scanner = tokenize_string(scanner)
+          tokens.push(t)
         when '\\'
           tokens.push(Token::Token.new(Token::Kind::Backslash, "\\"))
         when '*'

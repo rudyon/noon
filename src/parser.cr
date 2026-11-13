@@ -49,16 +49,12 @@ module Noon
             extra = sbl
           end
         end
-      when Token::Kind::BracketOpen
-        if reader.peek.kind == Token::Kind::BracketClose
-          type = Type::Annotation::Array
-          token = reader.consume
-          sbl, reader = parse_symbol(reader, token)
-          if sbl.is_a?(AST::Symbol)
-            extra = sbl
-          end
-        else
-          abort("error: unexpected type annotation #{token.lexeme}")
+      when Token::Kind::ArrayEmpty
+        type = Type::Annotation::Array
+        token = reader.consume
+        sbl, reader = parse_symbol(reader, token)
+        if sbl.is_a?(AST::Symbol)
+          extra = sbl
         end
       when Token::Kind::Asterisk
         type = Type::Annotation::Pointer
@@ -82,14 +78,19 @@ module Noon
       {AST::Expression, Reader}
 
       case token.kind
-      when Token::Kind::DoubleQuote
-        node, reader = parse_string(reader)
-        {node, reader}
+      when Token::Kind::String
+        {AST::NoonString.new(token.lexeme), reader}
       when Token::Kind::Symbol
         node, reader = parse_symbol(reader, token)
         {node, reader}
       when Token::Kind::Number
         node = parse_number(token)
+        {node, reader}
+      when Token::Kind::True
+        node = AST::NoonBool.new(true)
+        {node, reader}
+      when Token::Kind::False
+        node = AST::NoonBool.new(false)
         {node, reader}
       else
         abort("unexpected expression #{token}")
@@ -156,8 +157,9 @@ module Noon
           type, reader = parse_typeannotation(reader)
 
           if reader.peek.kind == Token::Kind::Equals
-            consumed = reader.consume
+            reader.consume
 
+            consumed = reader.consume
             value, reader = parse_expression(reader, consumed)
             if value.is_a?(AST::Value)
               {AST::VariableDeclaration.new(name, type, value), reader}
@@ -218,32 +220,6 @@ module Noon
       AST::Number.new(token.lexeme.to_u32)
     end
 
-    def self.parse_string(reader : Reader)
-      {AST::NoonString, Reader}
-      s = [] of String
-
-      while reader.peek.kind != Token::Kind::DoubleQuote
-        consumed = reader.consume
-        case consumed.kind
-        when Token::Kind::EOF
-          abort("error: expected #{Token::Kind::DoubleQuote} but found #{consumed}")
-        when Token::Kind::Symbol
-          sbl, reader = parse_symbol(reader, consumed)
-          case sbl
-          when AST::Symbol
-            s.push(sbl.name)
-          when AST::Call
-            s.push(sbl.name) # TODO: fix this
-          end
-        when Token::Kind::Number
-          s.push(parse_number(consumed).to_s)
-        end
-      end
-
-      string = AST::NoonString.new(s.join(" ")) # TODO: this turns all whitespace into a single space. it shouldn't do that
-      {string, reader}
-    end
-
     def self.parse_ext_function(reader : Reader)
       {AST::ExternalFunction, Reader}
       params = [] of AST::Parameter
@@ -269,13 +245,15 @@ module Noon
 
     def self.parse_ext(reader : Reader)
       {AST::External, Reader}
-      if reader.peek.kind == Token::Kind::DoubleQuote
-        reader.consume
-        string, reader = parse_string(reader)
+      if reader.peek.kind == Token::Kind::String
+        consumed = reader.consume
+        string, reader = parse_expression(reader, consumed)
+        if !string.is_a?(AST::NoonString)
+          abort("error: expected string after ext")
+        end
       else
-        abort("error: expected #{Token::Kind::DoubleQuote} but found #{reader.peek}")
+        abort("error: expected #{Token::Kind::String} but found #{reader.peek}")
       end
-      reader.consume
 
       consumed = reader.consume
       case consumed.kind
@@ -305,15 +283,17 @@ module Noon
         case consumed.kind
         when Token::Kind::EOF
           abort("error: expected #{Token::Kind::CurlyClose} but found #{consumed}")
-        when Token::Kind::Number
-          body.push(parse_number(consumed))
+        when .expression?
+          expr, reader = parse_expression(reader, consumed)
+          body.push(expr)
+        when Token::Kind::If
+          if_node, reader = parse_if(reader)
+          body.push(if_node)
         when Token::Kind::Symbol
-          sbl, reader = (parse_symbol(reader, consumed))
+          sbl, reader = parse_symbol(reader, consumed)
           case sbl
-          when AST::Symbol
+          when AST::ParseSymbolReturn
             body.push(sbl)
-          when AST::Call
-            # TODO: functions call inside function bodies are not supported yet
           end
         end
       end
@@ -425,7 +405,8 @@ module Noon
                 if reader.peek.kind == Token::Kind::Comma
                   reader.consume
                   properties.push(AST::Property.new(prop_sbl, prop_type))
-                  next
+                else
+                  properties.push(AST::Property.new(prop_sbl, prop_type))
                 end
               end
             else
@@ -480,8 +461,8 @@ module Noon
       end
     end
 
-    def self.parse_if(reader : Reader)
-      {AST::If, Reader}
+    def self.parse_conditional(reader : Reader)
+      {AST::Condition, Array(AST::Node), Reader}
 
       if reader.peek.kind.expression?
         consumed = reader.consume
@@ -491,7 +472,7 @@ module Noon
           abort("error: what8?")
         end
       else
-        abort("error: expected a condition after if")
+        abort("error: expected a condition after while")
       end
 
       if reader.peek.kind.comparison?
@@ -521,7 +502,23 @@ module Noon
         abort("error: expected #{Token::Kind::CurlyOpen} but found #{reader.peek}")
       end
 
+      {condition, body, reader}
+    end
+
+    def self.parse_if(reader : Reader)
+      {AST::If, Reader}
+
+      condition, body, reader = parse_conditional(reader)
+
       {AST::If.new(condition, body), reader}
+    end
+
+    def self.parse_while(reader : Reader)
+      {AST::While, Reader}
+
+      condition, body, reader = parse_conditional(reader)
+
+      {AST::While.new(condition, body), reader}
     end
 
     def self.parse(tokens : Array(Token::Token))
@@ -544,9 +541,12 @@ module Noon
         when Token::Kind::External
           node, reader = parse_ext(reader)
           ast.push(node)
+        when Token::Kind::While
+          node, reader = parse_while(reader)
+          ast.push(node)
         when .expression?
           node, reader = parse_expression(reader, consumed)
-          # ast.push(node)
+          ast.push(node)
         end
       end
 

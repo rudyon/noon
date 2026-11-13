@@ -5,6 +5,7 @@ module Noon
       If
       Type
       True
+      False
       Struct
       Function
       Constant
@@ -17,6 +18,7 @@ module Noon
       BracketClose
       SingleQuote
       DoubleQuote
+      ArrayEmpty
       Backslash
       Variable
       Asterisk
@@ -24,17 +26,19 @@ module Noon
       Period
       Equals
       RArrow
+      While
       Minus
       Colon
       Comma
       Bang
       Number
       Symbol
+      String
       NotEquals
 
       def expression? : Bool
         case self
-        when DoubleQuote, Number, Symbol
+        when DoubleQuote, Number, Symbol, True, False
           true
         else
           false
