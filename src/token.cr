@@ -7,6 +7,7 @@ module Noon
       True
       Struct
       Function
+      Constant
       External
       CurlyOpen
       CurlyClose
@@ -17,6 +18,7 @@ module Noon
       SingleQuote
       DoubleQuote
       Backslash
+      Variable
       Asterisk
       NewLine
       Period

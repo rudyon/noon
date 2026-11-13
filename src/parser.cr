@@ -32,10 +32,10 @@ module Noon
       {AST::TypeAnnotation, Reader}
       extra = nil
 
-      consumed = reader.consume
-      case consumed.kind
+      token = reader.consume
+      case token.kind
       when Token::Kind::Symbol
-        case consumed.lexeme
+        case token.lexeme
         when "Bool"
           type = Type::Annotation::Bool
         when "UInt32"
@@ -44,22 +44,35 @@ module Noon
           type = Type::Annotation::UInt64
         else
           type = Type::Annotation::Derived
-          sbl, reader = parse_symbol(reader, consumed)
+          sbl, reader = parse_symbol(reader, token)
           if sbl.is_a?(AST::Symbol)
             extra = sbl
           end
         end
+      when Token::Kind::BracketOpen
+        if reader.peek.kind == Token::Kind::BracketClose
+          type = Type::Annotation::Array
+          token = reader.consume
+          sbl, reader = parse_symbol(reader, token)
+          if sbl.is_a?(AST::Symbol)
+            extra = sbl
+          end
+        else
+          abort("error: unexpected type annotation #{token.lexeme}")
+        end
       when Token::Kind::Asterisk
         type = Type::Annotation::Pointer
-        consumed = reader.consume
-        sbl, reader = parse_symbol(reader, consumed)
+        token = reader.consume
+        sbl, reader = parse_symbol(reader, token)
         if sbl.is_a?(AST::Symbol)
           extra = sbl
         end
       when Token::Kind::Bang
         type = Type::Annotation::Never
+      when .whitespace?
+        type = Type::Annotation::Never
       else
-        abort("error: unexpected type annotation #{consumed.kind}")
+        abort("error: unexpected type annotation #{token.lexeme}")
       end
 
       {AST::TypeAnnotation.new(type, extra), reader}
@@ -84,31 +97,31 @@ module Noon
     end
 
     def self.parse_symbol(reader : Reader, token : Token::Token)
-      {AST::Symbol | AST::Call | AST::Access, Reader}
+      {AST::ParseSymbolReturn, Reader}
 
       if reader.peek.kind == Token::Kind::ParenOpen
-        reader.consume
         args = [] of AST::Expression
 
         while reader.peek.kind != Token::Kind::ParenClose
           consumed = reader.consume
           case consumed.kind
-          when Token::Kind::DoubleQuote
-            s, reader = parse_string(reader)
-            args.push(s)
-          when Token::Kind::NewLine
-            # do nothing
-          when Token::Kind::Number
-            args.push(parse_number(consumed))
-          when Token::Kind::Symbol
-            sbl, reader = parse_symbol(reader, consumed)
-            args.push(sbl)
+          when .expression?
+            node, reader = parse_expression(reader, consumed)
+            if node.is_a?(AST::Expression)
+              args.push(node)
+            else
+              abort("error: what1?")
+            end
           when Token::Kind::Comma
             consumed = reader.consume
             sbl, reader = parse_symbol(reader, consumed)
-            args.push(sbl)
+            if sbl.is_a?(AST::Expression)
+              args.push(sbl)
+            else
+              abort("error: expected expression but found #{sbl}")
+            end
           else
-            abort("error: unexpected symbol #{consumed.kind}")
+            reader.consume
           end
         end
         reader.consume
@@ -127,23 +140,82 @@ module Noon
           else
             call, reader = parse_symbol(reader, consumed)
 
-            if call.is_a?(AST::Access)
-              abort("error: what?")
+            if call.is_a?(AST::Call)
+              accesses.push(call)
+            else
+              abort("error: what2?")
             end
-
-            accesses.push(call)
           end
         end
 
         {AST::Access.new(accessed, accesses), reader}
       else
-        {AST::Symbol.new(token.lexeme), reader}
+        if reader.peek.kind == Token::Kind::Symbol
+          name = token.lexeme
+
+          type, reader = parse_typeannotation(reader)
+
+          if reader.peek.kind == Token::Kind::Equals
+            consumed = reader.consume
+
+            value, reader = parse_expression(reader, consumed)
+            if value.is_a?(AST::Value)
+              {AST::VariableDeclaration.new(name, type, value), reader}
+            else
+              abort("error: what3?")
+            end
+          else
+            {AST::VariableTypeAnnotation.new(name, type), reader}
+          end
+        elsif reader.peek.kind == Token::Kind::Equals
+          name = token.lexeme
+
+          reader.consume
+          consumed = reader.consume
+
+          value, reader = parse_expression(reader, consumed)
+
+          if value.is_a?(AST::Value)
+            {AST::VariableSetting.new(name, value), reader}
+          else
+            {AST::Symbol.new(name), reader}
+          end
+        elsif reader.peek.kind == Token::Kind::Constant
+          reader.consume
+
+          if reader.peek.kind == Token::Kind::Symbol
+            name = reader.consume.lexeme
+            consumed = reader.consume
+
+            type_sbl, reader = parse_symbol(reader, consumed)
+            type, reader = parse_typeannotation(reader)
+
+            if reader.peek.kind == Token::Kind::Equals
+              reader.consume
+              consumed = reader.consume
+
+              value, reader = parse_expression(reader, consumed)
+
+              if value.is_a?(AST::Value)
+                {AST::ConstantDeclaration.new(name, type, value), reader}
+              else
+                abort("error: what5?")
+              end
+            else
+              abort("error: expected equals but found #{reader.consume.lexeme}")
+            end
+          else
+            abort("error: expected constant name but found #{reader.consume.lexeme}")
+          end
+        else
+          {AST::Symbol.new(token.lexeme), reader}
+        end
       end
     end
 
     def self.parse_number(token : Token::Token)
-      AST::UInteger32
-      AST::UInteger32.new(token.lexeme.to_u32)
+      AST::Number
+      AST::Number.new(token.lexeme.to_u32)
     end
 
     def self.parse_string(reader : Reader)
@@ -187,7 +259,7 @@ module Noon
         when .whitespace?
           next
         else
-          abort("error: expected ParenOpen but got #{consumed.kind}")
+          abort("error: expected ParenOpen or RightArrow but got #{consumed}")
         end
       end
       reader.consume
@@ -271,6 +343,9 @@ module Noon
             if reader.peek.kind == Token::Kind::Comma
               reader.consume
               params.push(AST::Parameter.new(param_sbl, param_type))
+            else
+              params.push(AST::Parameter.new(param_sbl, param_type))
+              break
             end
           else
             abort("error: unexpected function param 1 #{param_sbl}")
@@ -281,6 +356,7 @@ module Noon
           abort("error: unexpected function param 2 #{consumed.kind}")
         end
       end
+      reader.consume
 
       {params, reader}
     end
@@ -298,7 +374,6 @@ module Noon
       if reader.peek.kind == Token::Kind::ParenOpen
         reader.consume
         params, reader = parse_function_params(reader)
-        reader.consume
       end
 
       if reader.peek.kind == Token::Kind::RArrow
@@ -326,12 +401,8 @@ module Noon
         consumed = reader.consume
         sbl, reader = parse_symbol(reader, consumed)
 
-        if sbl.is_a?(AST::Call)
-          abort("error: what?")
-        end
-
-        if sbl.is_a?(AST::Access)
-          abort("error: what?")
+        if !sbl.is_a?(AST::Symbol)
+          abort("error: what6?")
         end
       else
         abort("error: expected symbol after struct")
@@ -351,11 +422,10 @@ module Noon
               if consumed.kind == Token::Kind::Colon
                 prop_type, reader = parse_typeannotation(reader)
 
-                consumed = reader.consume
-                if consumed.kind == Token::Kind::Comma || reader.peek.kind == Token::Kind::CurlyClose
-                  properties.push(AST::Property.new(prop_sbl, prop_type))
-                else
+                if reader.peek.kind == Token::Kind::Comma
                   reader.consume
+                  properties.push(AST::Property.new(prop_sbl, prop_type))
+                  next
                 end
               end
             else
@@ -364,7 +434,7 @@ module Noon
           when .whitespace?
             next
           else
-            abort("error: unexpected struct #{consumed.kind}")
+            abort("error: unexpected struct #{consumed}")
           end
         end
 
@@ -380,15 +450,11 @@ module Noon
       {AST::Type, Reader}
 
       if reader.peek.kind == Token::Kind::Symbol
-        consumed = reader.consume
-        sbl, reader = parse_symbol(reader, consumed)
+        name = reader.consume
+        name = AST::Symbol.new(name.lexeme)
 
-        if sbl.is_a?(AST::Call)
-          abort("error: what?")
-        end
-
-        if sbl.is_a?(AST::Access)
-          abort("error: what?")
+        if !name.is_a?(AST::Symbol)
+          abort("error: what7?")
         end
       else
         abort("error: expected symbol after type")
@@ -404,11 +470,11 @@ module Noon
         reader.consume
         ext, reader = parse_ext(reader)
 
-        {AST::Type.new(sbl, ext), reader}
+        {AST::Type.new(name, ext), reader}
       elsif reader.peek.kind == Token::Kind::Symbol
         type, reader = parse_typeannotation(reader)
 
-        {AST::Type.new(sbl, type), reader}
+        {AST::Type.new(name, type), reader}
       else
         abort("error: expected symbol after equals in type declaration")
       end
@@ -420,6 +486,10 @@ module Noon
       if reader.peek.kind.expression?
         consumed = reader.consume
         left, reader = parse_expression(reader, consumed)
+
+        if !left.is_a?(AST::Expression)
+          abort("error: what8?")
+        end
       else
         abort("error: expected a condition after if")
       end
@@ -432,6 +502,9 @@ module Noon
         if reader.peek.kind.expression?
           consumed = reader.consume
           right, reader = parse_expression(reader, consumed)
+          if !right.is_a?(AST::Expression)
+            abort("error: what9?")
+          end
         else
           abort("error: expected an expression after #{comparison} but found #{consumed}")
         end
@@ -473,7 +546,7 @@ module Noon
           ast.push(node)
         when .expression?
           node, reader = parse_expression(reader, consumed)
-          ast.push(node)
+          # ast.push(node)
         end
       end
 

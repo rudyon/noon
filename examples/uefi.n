@@ -8,44 +8,44 @@ ext "UEFI" struct TableHeader {
 
 type Status = UInt64
 
-type TextReset = ext "UEFI" fun (
+type TextReset = ext "UEFI" fnc (
 	this: *SimpleTextOutputProtocol,
 	extended_verification: Bool
 ) -> Status
 
-type TextString = ext "UEFI" fun (
+type TextString = ext "UEFI" fnc (
 	this: *SimpleTextOutputProtocol,
 	string: *Char16
 ) -> Status
 
-type QueryMode = ext "UEFI" fun (
+type QueryMode = ext "UEFI" fnc (
 	this: *SimpleTextOutputProtocol,
 	mode: UInt64,
 	columns: *UInt64,
 	rows: *UInt64
 ) -> Status
 
-type SetMode = ext "UEFI" fun (
+type SetMode = ext "UEFI" fnc (
 	this: *SimpleTextOutputProtocol,
 	mode: UInt64
 ) -> Status
 
-type SetAttribute = ext "UEFI" fun (
+type SetAttribute = ext "UEFI" fnc (
 	this: *SimpleTextOutputProtocol,
 	attribute: UInt64
 ) -> Status
 
-type ClearScreen = ext "UEFI" fun (
+type ClearScreen = ext "UEFI" fnc (
 	this: *SimpleTextOutputProtocol
 ) -> Status
 
-type SetCursorPosition = ext "UEFI" fun (
+type SetCursorPosition = ext "UEFI" fnc (
 	this: *SimpleTextOutputProtocol,
 	columns: UInt64,
-	rows: UInt64,
+	rows: UInt64
 ) -> Status
 
-type EnableCursor = ext "UEFI" fun (
+type EnableCursor = ext "UEFI" fnc (
 	this: *SimpleTextOutputProtocol,
 	visible: Bool
 ) -> Status
@@ -88,11 +88,11 @@ ext "UEFI" struct SystemTable {
 	configuration_table:     *Void  # set to *Void for now because we don't need it yet
 }
 
-fun panic(status: Status) -> ! {
+fnc panic(status: Status) -> ! {
 	while true {}
 }
 
-ext "UEFI" fun efi_main(image_handle: *Void, system_table: *SystemTable) -> Status {
+ext "UEFI" fnc efi_main(image_handle: *Void, system_table: *SystemTable) -> Status {
 	status UInt64
 	string []Char16 = "hello tenebre!\0"
 

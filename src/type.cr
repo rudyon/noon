@@ -1,6 +1,6 @@
 module Noon
   module Type
-    alias Type = NoonNil | NoonBool | NoonUInt32 | NoonChar8
+    alias Type = NoonNil | NoonBool | NoonUInt32 | NoonChar8 | NoonNever | NoonArray | NoonPointer | NoonDerived
 
     enum Annotation : UInt8
       Nil
@@ -9,16 +9,9 @@ module Noon
       UInt64
       Char8
       Never
+      Array
       Pointer
       Derived
-      ArrayofNil
-      ArrayofBool
-      ArrayofUInt32
-      ArrayofUInt64
-      ArrayofChar8
-      ArrayofNever
-      ArrayofPointer
-      ArrayofDervied
     end
 
     struct NoonNil
@@ -59,10 +52,24 @@ module Noon
       end
     end
 
+    struct NoonArray
+      property type
+
+      def initialize(@type : Type::Annotation)
+      end
+    end
+
     struct NoonPointer
       property pointer
 
       def initialize(@pointer : Pointer)
+      end
+    end
+
+    struct NoonDerived
+      property name
+
+      def initialize(@name : String)
       end
     end
   end

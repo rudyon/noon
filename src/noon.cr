@@ -1,4 +1,5 @@
 require "option_parser"
+require "./debug"
 require "./token"
 require "./type"
 require "./lexer"
@@ -9,21 +10,6 @@ require "./ir"
 require "./backend"
 
 module Noon
-  def self.debug(output : Array(Token::Token))
-    puts "\n--- Tokens ---\n\n"
-    output.each do |t|
-      if t.kind == Token::Kind::EOF
-        print "EOF"
-      else
-        print "'#{t.lexeme}', "
-        if t.lexeme == "\\n"
-          print "\n"
-        end
-      end
-    end
-    print "\n\n"
-  end
-
   def self.main
     emit_ir = false
     output_file = ""
@@ -79,9 +65,10 @@ module Noon
     source = File.read(input_file)
     tokens = Lexer.tokenize(source)
     puts "Tokenization finished."
-    debug(tokens)
+    puts "\n--- Tokens ---"
+    Debug.print_tokens(tokens)
     ast = Parser.parse(tokens)
-    puts "Parsing finished."
+    puts "\nParsing finished."
 
     TypeChecker.check(ast)
     puts "Type checks passed."

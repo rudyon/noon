@@ -1,7 +1,13 @@
 module Noon
   module AST
-    alias Node = If | Type | Function | Parameter | External | Call | Access | UInteger32 | NoonString | Symbol | TypeAnnotation
-    alias Expression = Call | Access | UInteger32 | NoonString | Symbol
+    alias Node = Expression | Value | ParseSymbolReturn | Keyword | PropertyParameter | ConditionComparison | TypeAnnotation
+    alias PropertyParameter = Property | Parameter
+    alias Keyword = If | Type | Struct | Function | External | ExternalFunction
+    alias ConditionComparison = Condition | Comparison
+    alias Expression = CallAccessSymbol | Value
+    alias ParseSymbolReturn = VariableTypeAnnotation | VariableDeclaration | ConstantDeclaration | CallAccessSymbol
+    alias CallAccessSymbol = Call | Access | Symbol
+    alias Value = Number | NoonString
 
     struct If
       property condition, body
@@ -59,6 +65,34 @@ module Noon
       end
     end
 
+    struct VariableTypeAnnotation
+      property name, type
+
+      def initialize(@name : String, @type : TypeAnnotation)
+      end
+    end
+
+    struct VariableDeclaration
+      property name, type, value
+
+      def initialize(@name : String, @type : TypeAnnotation, @value : Number | NoonString)
+      end
+    end
+
+    struct VariableSetting
+      property name, value
+
+      def initialize(@name : String, @value : Number | NoonString)
+      end
+    end
+
+    struct ConstantDeclaration
+      property name, type, value
+
+      def initialize(@name : String, @type : TypeAnnotation, @value : Number | NoonString)
+      end
+    end
+
     struct Call
       property name, args
 
@@ -80,7 +114,7 @@ module Noon
       end
     end
 
-    struct UInteger32
+    struct Number
       property value
 
       def initialize(@value : UInt32)
@@ -111,7 +145,7 @@ module Noon
     struct TypeAnnotation
       property type, extra
 
-      def initialize(@type : Noon::Type::Annotation, @extra : AST::Symbol? = nil)
+      def initialize(@type : Noon::Type::Annotation, @extra : AST::Symbol? | Noon::Type::Annotation? = nil)
       end
     end
   end

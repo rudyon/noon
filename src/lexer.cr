@@ -166,9 +166,17 @@ module Noon
             tokens.push(t)
           end
         when 'f'
-          s, err = scanner.look("un")
+          s, err = scanner.look("nc")
           if !err
             tokens.push(Token::Token.new(Token::Kind::Function, "f#{s}"))
+          else
+            t, scanner = tokenize_number_or_symbol(consumed, scanner)
+            tokens.push(t)
+          end
+        when 'c'
+          s, err = scanner.look("nst")
+          if !err
+            tokens.push(Token::Token.new(Token::Kind::Constant, "c#{s}"))
           else
             t, scanner = tokenize_number_or_symbol(consumed, scanner)
             tokens.push(t)

@@ -108,8 +108,8 @@ module Noon
       case compare_from
       when AST::Call
         nodes.concat(lower_call(compare_from))
-      when AST::UInteger32
-        nodes.push(lower_uint32(compare_from))
+      when AST::Number
+        nodes.push(lower_number(compare_from))
       when AST::NoonString
         nodes.push(lower_string(compare_from))
       when AST::Symbol
@@ -189,8 +189,8 @@ module Noon
           nodes.concat(lower_ext(node))
         when AST::Call
           nodes.concat(lower_call(node))
-        when AST::UInteger32
-          nodes.push(lower_uint32(node))
+        when AST::Number
+          nodes.push(lower_number(node))
         when AST::NoonString
           nodes.push(lower_string(node))
         when AST::Symbol
@@ -251,8 +251,8 @@ module Noon
           nodes.concat(lower_cond(arg))
         in AST::Access
           nodes.push(lower_access(arg))
-        in AST::UInteger32
-          nodes.push(lower_uint32(arg))
+        in AST::Number
+          nodes.push(lower_number(arg))
         in AST::NoonString
           nodes.push(lower_string(arg))
         in AST::Symbol
@@ -263,9 +263,9 @@ module Noon
       nodes.push(Call.new(call.name, call.args.size))
     end
 
-    def self.lower_uint32(int32 : AST::UInteger32)
+    def self.lower_number(number : AST::Number)
       Operation
-      PushValue.new(int32.value)
+      PushValue.new(number.value)
     end
 
     def self.lower_string(string : AST::NoonString)
@@ -290,8 +290,8 @@ module Noon
           ir.concat(lower_ext(node))
         when AST::Call
           ir.concat(lower_call(node))
-        when AST::UInteger32
-          ir.push(lower_uint32(node))
+        when AST::Number
+          ir.push(lower_number(node))
         when AST::NoonString
           ir.push(lower_string(node))
         when AST::Symbol

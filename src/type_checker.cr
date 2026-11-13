@@ -16,7 +16,7 @@ module Noon
         if @env.has_key?(key)
           @env[key]
         else
-          abort("error: undefied #{key}")
+          abort("error: undefined #{key}")
         end
       end
     end
@@ -36,8 +36,9 @@ module Noon
     end
 
     def self.infer(expr : AST::Expression, env : Enviroment)
-      Type::Annotation
+      AST::TypeAnnotation
       type = Type::Annotation::Nil
+      extra = nil
 
       case expr
       in AST::If
@@ -49,19 +50,20 @@ module Noon
       in AST::Condition
         check_condition(expr, env)
         type = Type::Annotation::Bool
-      in AST::UInteger32
+      in AST::Number
         type = Type::Annotation::UInt32
       in AST::NoonString
-        type = Type::Annotation::ArrayofChar8
+        type = Type::Annotation::Array
+        extra = Type::Annotation::Char8
       in AST::Symbol
         type = env.get("symbol #{expr.name}")
       end
 
-      if type == Type::Annotation
-        type
-      else
-        abort("error: what?")
+      if !type.is_a?(Type::Annotation)
+        abort("#{expr}")
       end
+
+      AST::TypeAnnotation.new(type, extra)
     end
 
     def self.check_body(parent : AST::Node)
