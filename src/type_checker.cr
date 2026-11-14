@@ -24,7 +24,7 @@ module Noon
     struct Struct
       property properties
 
-      def initialize(@properties : Hash(String, Type::Annotation))
+      def initialize(@properties : Hash(String, AST::TypeAnnotation))
       end
     end
 
@@ -42,7 +42,7 @@ module Noon
 
       case expr
       in AST::Function
-        t = check_function(expr, env)
+        t = check_function(expr, env).type
       in AST::External
         t = check_ext(expr, env)
       in AST::ExternalFunction
@@ -127,7 +127,7 @@ module Noon
       end
 
       if !t.is_a?(Type::Annotation)
-        abort("#{expr}")
+        abort("#{expr} check returns wrong thing")
       end
 
       AST::TypeAnnotation.new(t, extra)
@@ -164,8 +164,9 @@ module Noon
     end
 
     def self.check_if(if_node : AST::If, env : Enviroment)
-      # TODO: implement type checking for ifs
-      AST::TypeAnnotation.new(Type::Annotation::Nil)
+      AST::TypeAnnotation
+      check_condition(if_node.condition, env)
+      check_body(if_node, env)
     end
 
     def self.check_call(call : AST::Call, env : Enviroment)
@@ -181,7 +182,7 @@ module Noon
 
       i = 0
       call.args.each do |arg|
-        inferred_type = infer(arg, env)
+        inferred_type = infer(arg, env).type
         if inferred_type != function.params[i]
           abort("error: expected #{function.params[i]} but found #{inferred_type}")
         end
@@ -217,7 +218,7 @@ module Noon
       d = ext.declaration
       case d
       when AST::ExternalFunction
-        d.type.type
+        check_ext_fnc(d, env)
       when AST::Struct
         env.push("struct #{d.symbol.name}", check_struct(d))
       when AST::Function
@@ -225,6 +226,21 @@ module Noon
       else
         abort("type checking for #{d} nees to be implemented")
       end
+    end
+
+    def self.check_ext_fnc(func : AST::ExternalFunction, outer_env : Enviroment)
+      Function
+      env = Enviroment.new
+      params = [] of Type::Annotation
+      t = func.type.type
+      t_extra = func.type.extra
+
+      func.params.each do |param|
+        params.push(param.type.type)
+        env.push("symbol #{param.symbol.name}", param.type.type)
+      end
+
+      Function.new(params, t)
     end
 
     def self.check_function(function : AST::Function, outer_env : Enviroment)
@@ -263,10 +279,10 @@ module Noon
 
     def self.check_struct(strct : AST::Struct)
       Struct
-      props = Hash(String, Type::Annotation).new
+      props = Hash(String, AST::TypeAnnotation).new
 
       strct.properties.each do |prop|
-        props[prop.symbol.name] = prop.type.type
+        props[prop.symbol.name] = prop.type
       end
 
       Struct.new(props)
