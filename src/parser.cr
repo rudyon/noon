@@ -297,6 +297,9 @@ module Noon
         when Token::Kind::If
           if_node, reader = parse_if(reader)
           body.push(if_node)
+        when Token::Kind::While
+          while_node, reader = parse_while(reader)
+          body.push(while_node)
         when Token::Kind::Symbol
           sbl, reader = parse_symbol(reader, consumed)
           case sbl

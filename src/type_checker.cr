@@ -8,7 +8,6 @@ module Noon
       end
 
       def push(key : String, type : Type::Annotation | Function | Struct)
-        puts "pushed '#{key}' with #{type}"
         @env[key] = type
       end
 
@@ -42,8 +41,6 @@ module Noon
       extra = nil
 
       case expr
-      in AST::If
-        t = check_if(expr, env)
       in AST::Function
         t = check_function(expr, env)
       in AST::External
@@ -54,8 +51,6 @@ module Noon
         abort("error: structs must be defined at the top level")
       in AST::Type
         abort("error: types must be defined at the top level")
-      in AST::While
-        t = check_while(expr, env)
       in AST::Call
         t = check_call(expr, env)
       in AST::Access
@@ -83,44 +78,47 @@ module Noon
 
         t
       in AST::VariableSetting
-        t == env.get("symbol #{expr.name}")
+        t = env.get("symbol #{expr.name}")
         v = expr.value
 
-        if v.is_a?(AST::NoonString)
-          if t != Type::Annotation::Char8 && t != Type::Annotation::Char16
-            abort("error: #{v} cannot be converted to #{t} implicitly")
-          end
-        elsif v.is_a?(AST::Number)
-          if t != Type::Annotation::UInt32 | t != Type::Annotation::UInt64 | t != Type::Annotation::Int32 | t != Type::Annotation::Int64
-            abort("error: #{v} cannot be converted to #{t} implicitly")
-          else
-            case t
-            when Type::Annotation::UInt32
-              if v.value < 0u32 || v.value > 4294967295u32
-                abort("error: #{v} cannot be converted to #{t} implicitly")
-              end
-            when Type::Annotation::UInt64
-              if v.value < 0u64 || v.value > 18446744073709551615u64
-                abort("error: #{v} cannot be converted to #{t} implicitly")
-              end
-            when Type::Annotation::Int32
-              if v.value < -2147483648i32 || v.value > 2147483647i32
-                abort("error: #{v} cannot be converted to #{t} implicitly")
-              end
-            when Type::Annotation::Int64
-              if v.value < -9223372036854775808i64 || v.value > 9223372036854775808u64
-                abort("error: #{v} cannot be converted to #{t} implicitly")
-              end
+        if t.is_a?(Type::Annotation)
+          if v.is_a?(AST::NoonString)
+            if t != Type::Annotation::Char8 && t != Type::Annotation::Char16
+              abort("error: #{v} cannot be converted to #{t} implicitly")
+            end
+          elsif v.is_a?(AST::Number)
+            if t != Type::Annotation::UInt32 | t != Type::Annotation::UInt64 | t != Type::Annotation::Int32 | t != Type::Annotation::Int64
+              abort("error: #{v} cannot be converted to #{t} implicitly")
             else
+              case t
+              when Type::Annotation::UInt32
+                if v.value < 0u32 || v.value > 4294967295u32
+                  abort("error: #{v} cannot be converted to #{t} implicitly")
+                end
+              when Type::Annotation::UInt64
+                if v.value < 0u64 || v.value > 18446744073709551615u64
+                  abort("error: #{v} cannot be converted to #{t} implicitly")
+                end
+              when Type::Annotation::Int32
+                if v.value < -2147483648i32 || v.value > 2147483647i32
+                  abort("error: #{v} cannot be converted to #{t} implicitly")
+                end
+              when Type::Annotation::Int64
+                if v.value < -9223372036854775808i64 || v.value > 9223372036854775808u64
+                  abort("error: #{v} cannot be converted to #{t} implicitly")
+                end
+              else
+                abort("error: #{v} cannot be converted to #{t} implicitly")
+              end
+            end
+          elsif v.is_a?(AST::NoonBool)
+            if t != Type::Annotation::Bool
               abort("error: #{v} cannot be converted to #{t} implicitly")
             end
           end
-        elsif v.is_a?(AST::NoonBool)
-          if t != Type::Annotation::Bool
-            abort("error: #{v} cannot be converted to #{t} implicitly")
-          end
+        else
+          abort("error: #{v} cannot be converted to #{t} implicitly")
         end
-        Type::Annotation::Char8
       in AST::VariableTypeAnnotation
         t = expr.type.type
         env.push("symbol #{expr.name}", t)
@@ -137,16 +135,12 @@ module Noon
 
     def self.check_while(while_node : AST::While, env : Enviroment)
       Type::Annotation
-      cond = check_condition(while_node.condition, env)
-      if cond == Type::Annotation::True
-        type = check_body(while_node, env)
-        if type.nil?
-          Type::Annotation::Never
-        else
-          type
-        end
+      check_condition(while_node.condition, env)
+      type = check_body(while_node, env)
+      if type.nil?
+        AST::TypeAnnotation.new(Type::Annotation::Never)
       else
-        check_body(while_node, env)
+        type
       end
     end
 
@@ -157,8 +151,12 @@ module Noon
         case node
         when AST::Expression
           type = infer(node, env)
+        when AST::While
+          type = check_while(node, env)
+        when AST::If
+          type = check_if(node, env)
         else
-          abort("error: what?")
+          abort("error: what? 1 #{node}")
         end
       end
 
@@ -167,14 +165,14 @@ module Noon
 
     def self.check_if(if_node : AST::If, env : Enviroment)
       # TODO: implement type checking for ifs
-      Type::Annotation::Nil
+      AST::TypeAnnotation.new(Type::Annotation::Nil)
     end
 
     def self.check_call(call : AST::Call, env : Enviroment)
       Type::Annotation
       function = env.get("function #{call.name}")
       if !function.is_a?(Function)
-        abort("error: what?")
+        abort("error: what? 2")
       end
 
       if call.args.size != function.params.size
@@ -203,10 +201,10 @@ module Noon
       end
 
       if right_type
-        if left_type != right_type
+        if left_type.type != right_type.type
           abort("error: can't compare #{left_type} with #{right_type}")
         end
-      elsif left_type != Bool
+      elsif left_type.type != Type::Annotation::Bool
         abort("error: can't use #{left_type} in comparison")
       end
     end

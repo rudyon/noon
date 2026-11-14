@@ -1,6 +1,6 @@
 module Noon
   module Type
-    alias Type = NoonNil | NoonVoid | NoonBool | NoonUInt32 | NoonChar8 | NoonNever | NoonArray | NoonPointer | NoonDerived
+    alias Type = NoonNil | NoonVoid | NoonBool | NoonUInt32 | NoonInt64 | NoonChar8 | NoonChar16 | NoonNever | NoonArray | NoonPointer | NoonDerived
 
     enum Annotation : UInt8
       Nil
