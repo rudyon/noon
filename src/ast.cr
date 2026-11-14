@@ -1,10 +1,11 @@
 module Noon
   module AST
-    alias Node = Expression | Value | ParseSymbolReturn | Keyword | PropertyParameter | ConditionComparison | TypeAnnotation
+    alias Node = Expression | Value | ParseSymbolReturn | Keyword | PropertyParameter | ConditionComparison | TypeAnnotation | Conditional
     alias PropertyParameter = Property | Parameter
-    alias Keyword = If | Type | Struct | Function | External | ExternalFunction | While
     alias ConditionComparison = Condition | Comparison
-    alias Expression = CallAccessSymbol | Value
+    alias Expression = ParseSymbolReturn | Value | Keyword
+    alias Keyword = Type | Struct | Function | External | ExternalFunction
+    alias Conditional = If | While
     alias ParseSymbolReturn = VariableTypeAnnotation | VariableDeclaration | VariableSetting | ConstantDeclaration | CallAccessSymbol
     alias CallAccessSymbol = Call | Access | Symbol
     alias Value = Number | NoonString | NoonBool
@@ -68,7 +69,7 @@ module Noon
     struct ExternalFunction
       property params, type
 
-      def initialize(@params : Array(Parameter), @tpe : TypeAnnotation)
+      def initialize(@params : Array(Parameter), @type : TypeAnnotation)
       end
     end
 

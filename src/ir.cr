@@ -123,8 +123,8 @@ module Noon
         case compare_to
         when AST::Call
           nodes.concat(lower_call(compare_to))
-        when AST::UInteger32
-          nodes.push(lower_uint32(compare_to))
+        when AST::Number
+          nodes.push(lower_number(compare_to))
         when AST::NoonString
           nodes.push(lower_string(compare_to))
         when AST::Symbol
@@ -151,8 +151,8 @@ module Noon
           nodes.concat(lower_ext(node))
         when AST::Call
           nodes.concat(lower_call(node))
-        when AST::UInteger32
-          nodes.push(lower_uint32(node))
+        when AST::Number
+          nodes.push(lower_number(node))
         when AST::NoonString
           nodes.push(lower_string(node))
         when AST::Symbol
@@ -247,6 +247,18 @@ module Noon
         case arg
         in AST::If
           nodes.concat(lower_if(arg))
+        in AST::Function
+          nodes.concat(lower_function(arg))
+        in AST::External
+          nodes.concat(lower_ext(arg))
+        in AST::ExternalFunction
+          # TODO: implement lowering external functions
+        in AST::Struct
+          # TODO: implement lowering structs
+        in AST::Type
+          # TODO: implement lowering type
+        in AST::While
+          # TODO: implement lowering while
         in AST::Call
           nodes.concat(lower_call(arg))
         in AST::Condition
@@ -261,6 +273,10 @@ module Noon
           # TODO: implement boolean lowering
         in AST::Symbol
           nodes.push(lower_symbol(arg))
+        in AST::ConstantDeclaration
+        in AST::VariableDeclaration
+        in AST::VariableSetting
+        in AST::VariableTypeAnnotation
         end
       end
 

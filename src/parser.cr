@@ -36,12 +36,22 @@ module Noon
       case token.kind
       when Token::Kind::Symbol
         case token.lexeme
+        when "Void"
+          type = Type::Annotation::Void
         when "Bool"
           type = Type::Annotation::Bool
         when "UInt32"
           type = Type::Annotation::UInt32
         when "UInt64"
           type = Type::Annotation::UInt64
+        when "Int32"
+          type = Type::Annotation::Int32
+        when "Int64"
+          type = Type::Annotation::Int64
+        when "Char8"
+          type = Type::Annotation::Char8
+        when "Char16"
+          type = Type::Annotation::Char16
         else
           type = Type::Annotation::Derived
           sbl, reader = parse_symbol(reader, token)
@@ -64,8 +74,6 @@ module Noon
           extra = sbl
         end
       when Token::Kind::Bang
-        type = Type::Annotation::Never
-      when .whitespace?
         type = Type::Annotation::Never
       else
         abort("error: unexpected type annotation #{token.lexeme}")

@@ -4,10 +4,11 @@ module Noon
       property env
 
       def initialize
-        @env = Hash(String, Type::Annotation | Function).new
+        @env = Hash(String, Type::Annotation | Function | Struct).new
       end
 
-      def push(key : String, type : Type::Annotation | Function)
+      def push(key : String, type : Type::Annotation | Function | Struct)
+        puts "pushed '#{key}' with #{type}"
         @env[key] = type
       end
 
@@ -37,58 +38,140 @@ module Noon
 
     def self.infer(expr : AST::Expression, env : Enviroment)
       AST::TypeAnnotation
-      type = Type::Annotation::Nil
+      t = Type::Annotation::Nil
       extra = nil
 
       case expr
       in AST::If
-        type = check_if(expr, env)
+        t = check_if(expr, env)
+      in AST::Function
+        t = check_function(expr, env)
+      in AST::External
+        t = check_ext(expr, env)
+      in AST::ExternalFunction
+        t = expr.type.type
+      in AST::Struct
+        abort("error: structs must be defined at the top level")
+      in AST::Type
+        abort("error: types must be defined at the top level")
+      in AST::While
+        t = check_while(expr, env)
       in AST::Call
-        type = check_call(expr, env)
+        t = check_call(expr, env)
       in AST::Access
-        type = check_access(expr, env)
+        t = check_access(expr, env)
       in AST::Condition
         check_condition(expr, env)
-        type = Type::Annotation::Bool
+        t = Type::Annotation::Bool
       in AST::Number
-        type = Type::Annotation::UInt32
+        t = Type::Annotation::UInt32
       in AST::NoonString
-        type = Type::Annotation::Array
+        t = Type::Annotation::Array
         extra = Type::Annotation::Char8
       in AST::NoonBool
-        type = Type::Annotation::Bool
+        t = Type::Annotation::Bool
       in AST::Symbol
-        type = env.get("symbol #{expr.name}")
+        t = env.get("symbol #{expr.name}")
+      in AST::ConstantDeclaration
+        t = expr.type.type
+        env.push("symbol #{expr.name}", t)
+
+        t
+      in AST::VariableDeclaration
+        t = expr.type.type
+        env.push("symbol #{expr.name}", t)
+
+        t
+      in AST::VariableSetting
+        t == env.get("symbol #{expr.name}")
+        v = expr.value
+
+        if v.is_a?(AST::NoonString)
+          if t != Type::Annotation::Char8 && t != Type::Annotation::Char16
+            abort("error: #{v} cannot be converted to #{t} implicitly")
+          end
+        elsif v.is_a?(AST::Number)
+          if t != Type::Annotation::UInt32 | t != Type::Annotation::UInt64 | t != Type::Annotation::Int32 | t != Type::Annotation::Int64
+            abort("error: #{v} cannot be converted to #{t} implicitly")
+          else
+            case t
+            when Type::Annotation::UInt32
+              if v.value < 0u32 || v.value > 4294967295u32
+                abort("error: #{v} cannot be converted to #{t} implicitly")
+              end
+            when Type::Annotation::UInt64
+              if v.value < 0u64 || v.value > 18446744073709551615u64
+                abort("error: #{v} cannot be converted to #{t} implicitly")
+              end
+            when Type::Annotation::Int32
+              if v.value < -2147483648i32 || v.value > 2147483647i32
+                abort("error: #{v} cannot be converted to #{t} implicitly")
+              end
+            when Type::Annotation::Int64
+              if v.value < -9223372036854775808i64 || v.value > 9223372036854775808u64
+                abort("error: #{v} cannot be converted to #{t} implicitly")
+              end
+            else
+              abort("error: #{v} cannot be converted to #{t} implicitly")
+            end
+          end
+        elsif v.is_a?(AST::NoonBool)
+          if t != Type::Annotation::Bool
+            abort("error: #{v} cannot be converted to #{t} implicitly")
+          end
+        end
+        Type::Annotation::Char8
+      in AST::VariableTypeAnnotation
+        t = expr.type.type
+        env.push("symbol #{expr.name}", t)
+
+        t
       end
 
-      if !type.is_a?(Type::Annotation)
+      if !t.is_a?(Type::Annotation)
         abort("#{expr}")
       end
 
-      AST::TypeAnnotation.new(type, extra)
+      AST::TypeAnnotation.new(t, extra)
     end
 
-    def self.check_body(parent : AST::Node)
+    def self.check_while(while_node : AST::While, env : Enviroment)
+      Type::Annotation
+      cond = check_condition(while_node.condition, env)
+      if cond == Type::Annotation::True
+        type = check_body(while_node, env)
+        if type.nil?
+          Type::Annotation::Never
+        else
+          type
+        end
+      else
+        check_body(while_node, env)
+      end
+    end
+
+    def self.check_body(parent : AST::Node, env : Enviroment)
+      AST::TypeAnnotation
+      type = AST::TypeAnnotation.new(Type::Annotation::Nil)
       parent.body.each do |node|
         case node
-        when AST::Function
-          check_function(node)
-        when AST::External
-          check_ext(node, env)
         when AST::Expression
-          infer(node, env)
+          type = infer(node, env)
         else
           abort("error: what?")
         end
       end
+
+      type
     end
 
     def self.check_if(if_node : AST::If, env : Enviroment)
       # TODO: implement type checking for ifs
+      Type::Annotation::Nil
     end
 
     def self.check_call(call : AST::Call, env : Enviroment)
-      Type::Type
+      Type::Annotation
       function = env.get("function #{call.name}")
       if !function.is_a?(Function)
         abort("error: what?")
@@ -133,19 +216,25 @@ module Noon
     end
 
     def self.check_ext(ext : AST::External, env : Enviroment)
-      case ext
-      when AST::Function
-        env.push("function #{ext.declaration.name}", check_function(ext.declaration))
+      d = ext.declaration
+      case d
+      when AST::ExternalFunction
+        d.type.type
       when AST::Struct
-        env.push("struct #{ext.declaration.name}", check_struct(ext.declaration))
+        env.push("struct #{d.symbol.name}", check_struct(d))
+      when AST::Function
+        env.push("function #{d.name}", check_function(d, env))
+      else
+        abort("type checking for #{d} nees to be implemented")
       end
     end
 
-    def self.check_function(function : AST::Function)
+    def self.check_function(function : AST::Function, outer_env : Enviroment)
       Function
       env = Enviroment.new
       params = [] of Type::Annotation
       expected_type = function.type.type
+      type_extra = function.type.extra
       inferred_type = Type::Annotation::Nil
 
       function.params.each do |param|
@@ -153,15 +242,46 @@ module Noon
         env.push("symbol #{param.symbol.name}", param.type.type)
       end
 
-      if inferred_type != expected_type
-        abort("error: expected #{expected_type} but found #{inferred_type}")
+      inferred_type = check_body(function, env).type
+
+      if inferred_type.nil?
+        abort("expected #{function.type.type} not #{inferred_type}")
       end
 
-      Function.new(params, inferred_type)
+      if expected_type == Type::Annotation::Derived && type_extra.is_a?(AST::Symbol)
+        if inferred_type != outer_env.get("symbol #{type_extra.name}")
+          abort("error: expected #{type_extra.name} but found #{inferred_type} 1")
+        else
+          Function.new(params, inferred_type)
+        end
+      elsif expected_type == Type::Annotation::Never
+        Function.new(params, expected_type)
+      elsif inferred_type != expected_type
+        abort("error: expected #{expected_type} but found #{inferred_type} 2")
+      else
+        Function.new(params, inferred_type)
+      end
     end
 
     def self.check_struct(strct : AST::Struct)
-      # TODO: implement type checking for structs
+      Struct
+      props = Hash(String, Type::Annotation).new
+
+      strct.properties.each do |prop|
+        props[prop.symbol.name] = prop.type.type
+      end
+
+      Struct.new(props)
+    end
+
+    def self.check_type(type : AST::Type, env : Enviroment)
+      t = type.type
+      case t
+      when AST::TypeAnnotation
+        env.push("symbol #{type.symbol.name}", t.type)
+      when AST::External
+        env.push("function #{type.symbol.name}", check_ext(t, env))
+      end
     end
 
     def self.check(ast : Array(AST::Node))
@@ -170,10 +290,12 @@ module Noon
 
       ast.each do |node|
         case node
-        when AST::Function
-          env.push("function #{node.name}", check_function(node))
         when AST::External
           check_ext(node, env)
+        when AST::Struct
+          env.push("struct #{node.symbol.name}", check_struct(node))
+        when AST::Type
+          check_type(node, env)
         when AST::Expression
           infer(node, env)
         end

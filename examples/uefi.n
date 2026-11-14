@@ -93,7 +93,7 @@ fnc panic(status: Status) -> ! {
 }
 
 ext "UEFI" fnc efi_main(image_handle: *Void, system_table: *SystemTable) -> Status {
-	status UInt64
+	status Status
 	string []Char16 = "hello tenebre!\0"
 
 	status = system_table.con_out.clear_screen(system_table.con_out)
