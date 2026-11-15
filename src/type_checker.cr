@@ -8,6 +8,7 @@ module Noon
       end
 
       def push(key : String, type : Type::Annotation | Function | Struct)
+        puts "pushed #{key} with #{type}"
         @env[key] = type
       end
 
@@ -31,7 +32,7 @@ module Noon
     struct Function
       property params, type
 
-      def initialize(@params : Array(Type::Annotation), @type : Type::Annotation)
+      def initialize(@params : Array(Type::Annotation), @type : AST::TypeAnnotation)
       end
     end
 
@@ -42,7 +43,8 @@ module Noon
 
       case expr
       in AST::Function
-        t = check_function(expr, env).type
+        t = check_function(expr, env)
+        env.push("function #{expr.name}", t)
       in AST::External
         t = check_ext(expr, env)
       in AST::ExternalFunction
@@ -127,10 +129,10 @@ module Noon
       end
 
       if !t.is_a?(Type::Annotation)
-        abort("#{expr} check returns wrong thing")
+        t
+      else
+        AST::TypeAnnotation.new(t, extra)
       end
-
-      AST::TypeAnnotation.new(t, extra)
     end
 
     def self.check_while(while_node : AST::While, env : Enviroment)
@@ -182,7 +184,7 @@ module Noon
 
       i = 0
       call.args.each do |arg|
-        inferred_type = infer(arg, env).type
+        inferred_type = infer(arg, env)
         if inferred_type != function.params[i]
           abort("error: expected #{function.params[i]} but found #{inferred_type}")
         end
@@ -201,8 +203,12 @@ module Noon
         right_type = infer(right, env)
       end
 
+      if !left_type.is_a?(AST::TypeAnnotation)
+        abort("error: whaT?")
+      end
+
       if right_type
-        if left_type.type != right_type.type
+        if left_type != right_type
           abort("error: can't compare #{left_type} with #{right_type}")
         end
       elsif left_type.type != Type::Annotation::Bool
@@ -232,8 +238,7 @@ module Noon
       Function
       env = Enviroment.new
       params = [] of Type::Annotation
-      t = func.type.type
-      t_extra = func.type.extra
+      t = func.type
 
       func.params.each do |param|
         params.push(param.type.type)
@@ -256,9 +261,9 @@ module Noon
         env.push("symbol #{param.symbol.name}", param.type.type)
       end
 
-      inferred_type = check_body(function, env).type
+      inferred_type = check_body(function, env)
 
-      if inferred_type.nil?
+      if !inferred_type.is_a?(AST::TypeAnnotation)
         abort("expected #{function.type.type} not #{inferred_type}")
       end
 
@@ -269,7 +274,7 @@ module Noon
           Function.new(params, inferred_type)
         end
       elsif expected_type == Type::Annotation::Never
-        Function.new(params, expected_type)
+        Function.new(params, AST::TypeAnnotation.new(Type::Annotation::Never))
       elsif inferred_type != expected_type
         abort("error: expected #{expected_type} but found #{inferred_type} 2")
       else
