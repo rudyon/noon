@@ -1,0 +1,13 @@
+cnst libc = @impt("std/linux/x86_64/libc")
+
+typ string = []char
+
+cnst write = @xtrn(
+	libc,
+	"write",
+	fnc(descriptor: int, pointer: *void, size: int) -> int
+)
+
+cnst print = fnc(string: string) {
+	write(1, *string, @byts(string))
+} -> int

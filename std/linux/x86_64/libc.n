@@ -1,0 +1,1 @@
+cnst libc = @lnk("/usr/lib/libc.so.6", "C")

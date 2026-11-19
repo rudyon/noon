@@ -1,0 +1,3 @@
+cnst io = @impt("std/io")
+
+io.print("hello, sekai!")
